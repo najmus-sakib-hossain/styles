@@ -24,13 +24,33 @@ fn main() {
     let processed_paths = Arc::new(Mutex::new(HashSet::<PathBuf>::new()));
 
     let files = find_tsx_jsx_files(dir);
-    for file in files {
-        let class_names = parse_classnames(&file);
-        update_maps(&file, &class_names, &mut file_classnames, &mut classname_counts, &mut global_classnames);
-    }
-    generate_css(&global_classnames, &output_dir.join("styles.css"));
-    log_change(Path::new("Initial build"), 0, 0, &output_dir.join("styles.css"), global_classnames.len(), 0, 0);
+    if !files.is_empty() {
+        let scan_start = Instant::now();
+        let mut total_added_in_files = 0;
 
+        for file in &files {
+            let new_classnames = parse_classnames(file);
+            total_added_in_files += new_classnames.len();
+            update_maps(file, &new_classnames, &mut file_classnames, &mut classname_counts, &mut global_classnames);
+        }
+        
+        generate_css(&global_classnames, &output_dir.join("styles.css"));
+        let scan_duration = scan_start.elapsed();
+        
+        log_change(
+            dir,
+            total_added_in_files,
+            0,
+            &output_dir.join("styles.css"),
+            global_classnames.len(),
+            0,
+            scan_duration.as_micros()
+        );
+    } else {
+        println!("{}", "No .tsx or .jsx files found in src/.".yellow());
+    }
+    
+    println!("{}", "Watching for file changes...".bold().cyan());
 
     let (tx, rx) = channel();
     let config = Config::default().with_poll_interval(Duration::from_millis(1000));
@@ -420,9 +440,11 @@ fn process_file_change(
         classname_counts,
         global_classnames,
     );
-    generate_css(global_classnames, &dir.join("styles.css"));
-    let time_ms = start.elapsed().as_millis();
-    log_change(path, added_file, removed_file, &dir.join("styles.css"), added_global, removed_global, time_ms);
+    if added_global > 0 || removed_global > 0 {
+        generate_css(global_classnames, &dir.join("styles.css"));
+    }
+    let time_us = start.elapsed().as_micros();
+    log_change(path, added_file, removed_file, &dir.join("styles.css"), added_global, removed_global, time_us);
 }
 
 fn process_file_remove(
@@ -444,9 +466,11 @@ fn process_file_remove(
                 }
             }
         }
-        generate_css(global_classnames, &dir.join("styles.css"));
-        let time_ms = start.elapsed().as_millis();
-        log_change(path, 0, old_classnames.len(), &dir.join("styles.css"), 0, removed_in_global, time_ms);
+        if removed_in_global > 0 {
+            generate_css(global_classnames, &dir.join("styles.css"));
+        }
+        let time_us = start.elapsed().as_micros();
+        log_change(path, 0, old_classnames.len(), &dir.join("styles.css"), 0, removed_in_global, time_us);
     }
 }
 
@@ -457,7 +481,7 @@ fn log_change(
     output_path: &Path,
     added_global: usize,
     removed_global: usize,
-    time_ms: u128,
+    time_us: u128,
 ) {
     let source_str = source_path.strip_prefix("./").unwrap_or(source_path).display().to_string();
     let output_str = output_path.strip_prefix("./").unwrap_or(output_path).display().to_string();
@@ -474,13 +498,19 @@ fn log_change(
         format!("-{}", removed_global).bright_red()
     );
 
+    let time_str = if time_us < 1000 {
+        format!("{}µs", time_us)
+    } else {
+        format!("{}ms", time_us / 1000)
+    };
+
     println!(
-        "{} {} -> {} {} {} {}ms",
+        "{} {} -> {} {} {} {}",
         source_str.bright_cyan(),
         file_changes,
         output_str.bright_magenta(),
         output_changes,
         "·".bright_black(),
-        time_ms.to_string().yellow()
+        time_str.yellow()
     );
 }

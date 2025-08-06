@@ -10,6 +10,9 @@
 .h-full {
     height: 100%;
 }
+.happy {
+    color: red;
+}
 .hidden {
     color: red;
 }
@@ -19,6 +22,9 @@
 .justify-center {
     justify-content: center;
 }
+.sad {
+    color: red;
+}
 .test {
     color: red;
 }
@@ -27,4 +33,7 @@
 }
 .w-full {
     width: 100%;
+}
+.work {
+    color: red;
 }
