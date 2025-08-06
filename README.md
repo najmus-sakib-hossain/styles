@@ -15,10 +15,12 @@ oxc_span = "0.31"
 colored = "2.1"
 walkdir = "2.5"
 
-cargo add notify oxc_parser oxc_allocator oxc_span oxc_ast colored walkdir
 ```
 
 ```bash
+cargo add notify oxc_parser oxc_allocator oxc_span oxc_ast colored walkdir
+cargo run --release
+
 git clone https://github.com/oxc-project/oxc && cd oxc && rm -rf .git && cd ..
 git clone https://github.com/biomejs/biome && cd biome && rm -rf .git && cd ..
 git clone https://github.com/unnoq/orpc && cd orpc && rm -rf .git && cd ..
