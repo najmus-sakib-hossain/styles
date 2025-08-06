@@ -10,6 +10,9 @@
 .h-full {
     height: 100%;
 }
+.hidden {
+    color: red;
+}
 .items-center {
     align-items: center;
 }

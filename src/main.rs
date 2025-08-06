@@ -8,7 +8,7 @@ use std::fs::{File, read_dir};
 use std::io::Write;
 
 use colored::Colorize;
-use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
+use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher, event::{ModifyKind, AccessKind, AccessMode}};
 use oxc_allocator::Allocator;
 use oxc_ast::ast::{JSXAttributeItem, JSXOpeningElement, Program};
 use oxc_parser::Parser;
@@ -26,10 +26,11 @@ fn main() {
     let files = find_tsx_jsx_files(dir);
     for file in files {
         let class_names = parse_classnames(&file);
-        println!("Parsed class names for {}: {:?}", file.display(), class_names);
         update_maps(&file, &class_names, &mut file_classnames, &mut classname_counts, &mut global_classnames);
     }
     generate_css(&global_classnames, &output_dir.join("styles.css"));
+    log_change(Path::new("Initial build"), 0, 0, &output_dir.join("styles.css"), global_classnames.len(), 0, 0);
+
 
     let (tx, rx) = channel();
     let config = Config::default().with_poll_interval(Duration::from_millis(1000));
@@ -39,30 +40,36 @@ fn main() {
     loop {
         match rx.recv() {
             Ok(Ok(event)) => {
-                println!("Received event: {:?}", event);
                 for path in event.paths {
-                    let processed_paths = Arc::clone(&processed_paths);
+                    let processed_paths_clone = Arc::clone(&processed_paths);
                     if is_tsx_jsx(&path) {
-                        let mut paths = processed_paths.lock().unwrap();
+                        let mut paths = processed_paths_clone.lock().unwrap();
                         if !paths.contains(&path) {
-                            paths.insert(path.clone());
                             match event.kind {
-                                notify::EventKind::Create(_) | notify::EventKind::Modify(_) => {
+                                notify::EventKind::Create(_) |
+                                notify::EventKind::Modify(ModifyKind::Data(_)) |
+                                notify::EventKind::Modify(ModifyKind::Name(_)) |
+                                notify::EventKind::Access(AccessKind::Close(AccessMode::Write)) => {
+                                    paths.insert(path.clone());
                                     process_file_change(&path, &mut file_classnames, &mut classname_counts, &mut global_classnames, output_dir);
                                 }
                                 notify::EventKind::Remove(_) => {
+                                    paths.insert(path.clone());
                                     process_file_remove(&path, &mut file_classnames, &mut classname_counts, &mut global_classnames, output_dir);
                                 }
                                 _ => {}
                             }
-                            std::thread::spawn({
-                                let path = path.clone();
-                                let processed_paths = Arc::clone(&processed_paths);
-                                move || {
-                                    std::thread::sleep(Duration::from_millis(2000));
-                                    processed_paths.lock().unwrap().remove(&path);
-                                }
-                            });
+                            
+                            if paths.contains(&path) {
+                                std::thread::spawn({
+                                    let path_clone = path.clone();
+                                    let processed_paths_clone_for_thread = Arc::clone(&processed_paths);
+                                    move || {
+                                        std::thread::sleep(Duration::from_millis(500));
+                                        processed_paths_clone_for_thread.lock().unwrap().remove(&path_clone);
+                                    }
+                                });
+                            }
                         }
                     }
                 }
@@ -99,8 +106,7 @@ fn is_tsx_jsx(path: &Path) -> bool {
 fn parse_classnames(path: &Path) -> HashSet<String> {
     let source_text = match std::fs::read_to_string(path) {
         Ok(text) => text,
-        Err(e) => {
-            println!("Error reading {}: {:?}", path.display(), e);
+        Err(_) => {
             return HashSet::new();
         }
     };
@@ -110,15 +116,11 @@ fn parse_classnames(path: &Path) -> HashSet<String> {
     let parse_result = parser.parse();
 
     if !parse_result.errors.is_empty() {
-        println!("Parse errors for {}: {:?}", path.display(), parse_result.errors);
         return HashSet::new();
     }
 
     let mut visitor = ClassNameVisitor::new();
     visitor.visit_program(&parse_result.program);
-    if visitor.class_names.is_empty() {
-        println!("No class names found in {}: AST may not contain expected JSX structure", path.display());
-    }
     visitor.class_names
 }
 
@@ -400,7 +402,6 @@ fn generate_css(class_names: &HashSet<String>, output_path: &Path) {
         let style = class_map.get(cn.as_str()).unwrap_or(&"color: red;");
         writeln!(file, ".{} {{\n    {}\n}}", cn, style).unwrap();
     }
-    println!("Generated CSS for {} classes: {:?}", class_names.len(), class_names);
 }
 
 fn process_file_change(
@@ -460,10 +461,26 @@ fn log_change(
 ) {
     let source_str = source_path.strip_prefix("./").unwrap_or(source_path).display().to_string();
     let output_str = output_path.strip_prefix("./").unwrap_or(output_path).display().to_string();
-    let file_changes = format!("(+{},{})", added_file, format!("-{}", removed_file).red()).green();
-    let output_changes = format!("(+{},{})", added_global, format!("-{}", removed_global).red()).green();
+    
+    let file_changes = format!(
+        "({}, {})",
+        format!("+{}", added_file).bright_green(),
+        format!("-{}", removed_file).bright_red()
+    );
+
+    let output_changes = format!(
+        "({}, {})",
+        format!("+{}", added_global).bright_green(),
+        format!("-{}", removed_global).bright_red()
+    );
+
     println!(
-        "{} {} -> {} {} · {}ms",
-        source_str, file_changes, output_str, output_changes, time_ms
+        "{} {} -> {} {} {} {}ms",
+        source_str.bright_cyan(),
+        file_changes,
+        output_str.bright_magenta(),
+        output_changes,
+        "·".bright_black(),
+        time_ms.to_string().yellow()
     );
 }
