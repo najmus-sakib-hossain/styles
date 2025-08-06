@@ -1,5 +1,5 @@
 use std::borrow::Cow;
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::channel;
 use std::time::{Duration, Instant};
@@ -7,7 +7,7 @@ use std::fs::{File, read_dir};
 use std::io::Write;
 
 use colored::Colorize;
-use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher, event::{ModifyKind, AccessKind, AccessMode}};
+use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
 use oxc_allocator::Allocator;
 use oxc_ast::ast::{JSXAttributeItem, JSXOpeningElement, Program};
 use oxc_parser::Parser;
@@ -21,7 +21,7 @@ fn main() {
     let mut file_classnames: HashMap<PathBuf, HashSet<String>> = HashMap::new();
     let mut classname_counts: HashMap<String, u32> = HashMap::new();
     let mut global_classnames: HashSet<String> = HashSet::new();
-    let mut last_processed: HashMap<PathBuf, Instant> = HashMap::new();
+    let mut pending_events: HashMap<PathBuf, Instant> = HashMap::new();
 
     let files = find_tsx_jsx_files(dir);
     if !files.is_empty() {
@@ -33,7 +33,7 @@ fn main() {
             let new_classnames = parse_classnames(&canonical_path);
             let (added, _, _, _) = update_maps(&canonical_path, &new_classnames, &mut file_classnames, &mut classname_counts, &mut global_classnames);
             total_added_in_files += added;
-            last_processed.insert(canonical_path, Instant::now());
+            pending_events.insert(canonical_path, Instant::now());
         }
         
         generate_css(&global_classnames, &output_file);
@@ -59,36 +59,42 @@ fn main() {
     let mut watcher = RecommendedWatcher::new(tx, config).unwrap();
     watcher.watch(dir, RecursiveMode::NonRecursive).unwrap();
 
+    let mut event_queue: VecDeque<(PathBuf, bool)> = VecDeque::new();
+
     loop {
-        match rx.recv() {
+        match rx.recv_timeout(Duration::from_millis(100)) {
             Ok(Ok(event)) => {
                 for path in event.paths {
                     if is_tsx_jsx(&path) {
                         let canonical_path = std::fs::canonicalize(&path).unwrap_or_else(|_| path.to_path_buf());
-                        if let Some(last_time) = last_processed.get(&canonical_path) {
-                            if last_time.elapsed() < Duration::from_millis(100) {
-                                continue;
-                            }
-                        }
-                        match event.kind {
-                            notify::EventKind::Create(_) |
-                            notify::EventKind::Modify(ModifyKind::Data(_)) |
-                            notify::EventKind::Modify(ModifyKind::Name(_)) |
-                            notify::EventKind::Access(AccessKind::Close(AccessMode::Write)) => {
-                                process_file_change(&canonical_path, &mut file_classnames, &mut classname_counts, &mut global_classnames, &output_file);
-                                last_processed.insert(canonical_path.clone(), Instant::now());
-                            }
-                            notify::EventKind::Remove(_) => {
-                                process_file_remove(&canonical_path, &mut file_classnames, &mut classname_counts, &mut global_classnames, &output_file);
-                                last_processed.insert(canonical_path.clone(), Instant::now());
-                            }
-                            _ => {}
-                        }
+                        let is_remove = matches!(event.kind, notify::EventKind::Remove(_));
+                        event_queue.push_back((canonical_path, is_remove));
                     }
                 }
             }
             Ok(Err(e)) => println!("Watch error: {:?}", e),
-            Err(e) => println!("Channel error: {:?}", e),
+            Err(_) => {
+                let mut processed_paths = HashSet::new();
+                let now = Instant::now();
+                while let Some((path, is_remove)) = event_queue.pop_front() {
+                    if processed_paths.contains(&path) {
+                        continue;
+                    }
+                    if let Some(last_time) = pending_events.get(&path) {
+                        if now.duration_since(*last_time) < Duration::from_millis(100) {
+                            event_queue.push_back((path, is_remove));
+                            continue;
+                        }
+                    }
+                    if is_remove {
+                        process_file_remove(&path, &mut file_classnames, &mut classname_counts, &mut global_classnames, &output_file);
+                    } else {
+                        process_file_change(&path, &mut file_classnames, &mut classname_counts, &mut global_classnames, &output_file);
+                    }
+                    pending_events.insert(path.clone(), now);
+                    processed_paths.insert(path);
+                }
+            }
         }
     }
 }
@@ -117,10 +123,22 @@ fn is_tsx_jsx(path: &Path) -> bool {
 }
 
 fn parse_classnames(path: &Path) -> HashSet<String> {
-    let source_text = match std::fs::read_to_string(path) {
-        Ok(text) => text,
-        Err(_) => {
-            return HashSet::new();
+    let mut attempts = 0;
+    let max_attempts = 3;
+    let source_text = loop {
+        match std::fs::read_to_string(path) {
+            Ok(text) if !text.is_empty() => break text,
+            Ok(_) => {
+                attempts += 1;
+                if attempts >= max_attempts {
+                    return HashSet::new();
+                }
+                std::thread::sleep(Duration::from_millis(50));
+                continue;
+            }
+            Err(_) => {
+                return HashSet::new();
+            }
         }
     };
     let allocator = Allocator::default();

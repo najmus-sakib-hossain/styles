@@ -1,0 +1,27 @@
+.flex {
+    display: flex;
+}
+.font-bold {
+    font-weight: 700;
+}
+.grid {
+    color: red;
+}
+.h-full {
+    height: 100%;
+}
+.hi {
+    color: red;
+}
+.items-center {
+    align-items: center;
+}
+.justify-center {
+    justify-content: center;
+}
+.text-3xl {
+    font-size: 1.875rem; line-height: 2.25rem;
+}
+.w-full {
+    width: 100%;
+}
