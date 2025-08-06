@@ -224,8 +224,21 @@ fn generate_css(class_names: &HashSet<String>, output_path: &Path) {
     let mut file = File::create(output_path).unwrap();
     let mut sorted_class_names: Vec<_> = class_names.iter().collect();
     sorted_class_names.sort();
+
+    // Map Tailwind-like class names to CSS rules
+    let class_map: HashMap<&str, &str> = [
+        ("h-full", "height: 100%;"),
+        ("w-full", "width: 100%;"),
+        ("flex", "display: flex;"),
+        ("items-center", "align-items: center;"),
+        ("justify-center", "justify-content: center;"),
+        ("text-3xl", "font-size: 1.875rem; line-height: 2.25rem;"),
+        ("font-bold", "font-weight: 700;"),
+    ].into_iter().collect();
+
     for cn in sorted_class_names {
-        writeln!(file, ".{} {{\n    color: red;\n}}", cn).unwrap();
+        let style = class_map.get(cn.as_str()).unwrap_or(&"color: red;");
+        writeln!(file, ".{} {{\n    {}\n}}", cn, style).unwrap();
     }
 }
 
