@@ -14,40 +14,38 @@ use oxc_span::SourceType;
 use walkdir::WalkDir;
 
 mod styles_generated {
-    #![allow(unsafe_op_in_unsafe_fn, unused_imports)]
+    #![allow(dead_code, unused_imports, unsafe_op_in_unsafe_fn)]
     include!(concat!(env!("OUT_DIR"), "/styles_generated.rs"));
 }
 use styles_generated::style_schema;
 
-struct StyleEngine<'a> {
+// FIX: The StyleEngine no longer needs a lifetime parameter.
+// It now owns the buffer and accesses the generators on-demand.
+struct StyleEngine {
     precompiled: HashMap<String, String>,
-    generators: Vec<style_schema::Generator<'a>>,
-    _buffer: Vec<u8>,
+    buffer: Vec<u8>,
 }
 
-impl<'a> StyleEngine<'a> {
+impl StyleEngine {
     fn new() -> Result<Self, Box<dyn std::error::Error>> {
         let buffer = fs::read("styles.bin")?;
+        let config = unsafe { flatbuffers::root_unchecked::<style_schema::Config>(&buffer) };
+
         let mut precompiled = HashMap::new();
-        let generators;
-        {
-            let config = unsafe { flatbuffers::root_unchecked::<style_schema::Config>(&buffer) };
-            if let Some(styles) = config.styles() {
-                for style in styles {
-                    let name = style.name();
-                    if let Some(css) = style.css() {
-                        precompiled.insert(name.to_string(), css.to_string());
-                    }
+        if let Some(styles) = config.styles() {
+            for style in styles {
+                let name = style.name();
+                if let Some(css) = style.css() {
+                    precompiled.insert(name.to_string(), css.to_string());
                 }
             }
-            generators = config.generators().map_or_else(Vec::new, |gens| {
-                gens.iter().map(|g| unsafe { style_schema::Generator::init_from_table(g._tab) }).collect()
-            });
         }
+
+        // The generators are no longer stored directly in the struct.
+        // We now own the buffer itself.
         Ok(Self {
             precompiled,
-            generators,
-            _buffer: buffer,
+            buffer,
         })
     }
 
@@ -56,18 +54,23 @@ impl<'a> StyleEngine<'a> {
             return Some(format!(".{} {{\n    {}\n}}", class_name, css));
         }
 
-        for generator in &self.generators {
-            if let (Some(prefix), Some(property), Some(unit)) = (
-                generator.prefix(),
-                generator.property(),
-                generator.unit(),
-            ) {
-                if class_name.starts_with(&format!("{}-", prefix)) {
-                    let value_str = &class_name[prefix.len() + 1..];
-                    if let Ok(num_val) = value_str.parse::<f32>() {
-                        let final_value = num_val * generator.multiplier();
-                        let css = format!("{}: {}{};", property, final_value, unit);
-                        return Some(format!(".{} {{\n    {}\n}}", class_name, css));
+        // FIX: Access the generators directly from the owned buffer when needed.
+        // This is still extremely fast and solves all lifetime issues.
+        let config = unsafe { flatbuffers::root_unchecked::<style_schema::Config>(&self.buffer) };
+        if let Some(generators) = config.generators() {
+            for generator in generators {
+                if let (Some(prefix), Some(property), Some(unit)) = (
+                    generator.prefix(),
+                    generator.property(),
+                    generator.unit(),
+                ) {
+                    if class_name.starts_with(&format!("{}-", prefix)) {
+                        let value_str = &class_name[prefix.len() + 1..];
+                        if let Ok(num_val) = value_str.parse::<f32>() {
+                            let final_value = num_val * generator.multiplier();
+                            let css = format!("{}: {}{};", property, final_value, unit);
+                            return Some(format!(".{} {{\n    {}\n}}", class_name, css));
+                        }
                     }
                 }
             }
