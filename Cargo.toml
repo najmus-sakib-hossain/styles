@@ -1,0 +1,13 @@
+[package]
+name = "dx"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+colored = "3.0.0"
+notify = "8.2.0"
+oxc_allocator = "0.80.0"
+oxc_ast = "0.80.0"
+oxc_parser = "0.80.0"
+oxc_span = "0.80.0"
+walkdir = "2.5.0"

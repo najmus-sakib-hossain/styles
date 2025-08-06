@@ -1,5 +1,22 @@
 # Inspirations
 
+```toml
+[package]
+name = "tsx_jsx_watcher"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+notify = "6.1"
+oxc_parser = "0.31"
+oxc_allocator = "0.31"
+oxc_ast = "0.31"
+oxc_span = "0.31"
+colored = "2.1"
+walkdir = "2.5"
+
+cargo add notify oxc_parser oxc_allocator oxc_span oxc_ast colored walkdir
+```
 
 ```bash
 git clone https://github.com/oxc-project/oxc && cd oxc && rm -rf .git && cd ..
