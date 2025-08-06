@@ -1,20 +1,14 @@
-// build.rs
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
-use flatbuffers::FlatBufferBuilder;
+use flatbuffers::{FlatBufferBuilder, WIPOffset};
 use serde::Deserialize;
-
-mod styles_generated {
-    include!(concat!(env!("OUT_DIR"), "/styles_generated.rs"));
-}
-use styles_generated::style_schema;
 
 #[derive(Deserialize, Debug)]
 struct TomlConfig {
-    #[serde(default)]
-    static: HashMap<String, String>,
+    #[serde(rename = "static", default)]
+    static_styles: HashMap<String, String>,
     #[serde(default)]
     dynamic: HashMap<String, HashMap<String, String>>,
     #[serde(default)]
@@ -54,15 +48,13 @@ fn main() {
 
     let mut precompiled_styles = Vec::new();
 
-    for (name, css) in toml_data.static {
+    for (name, css) in toml_data.static_styles {
         precompiled_styles.push(StyleRecord { name, css });
     }
 
     for (key, values) in toml_data.dynamic {
         let parts: Vec<&str> = key.split('|').collect();
-        if parts.len() != 2 {
-            continue;
-        }
+        if parts.len() != 2 { continue; }
         let prefix = parts[0];
         let property = parts[1];
         for (suffix, value) in values {
@@ -78,15 +70,13 @@ fn main() {
 
     let mut style_offsets = Vec::new();
     for style in &precompiled_styles {
-        let name = builder.create_string(&style.name);
-        let css = builder.create_string(&style.css);
-        let style_offset = style_schema::Style::create(
-            &mut builder,
-            &style_schema::StyleArgs {
-                name: Some(name),
-                css: Some(css),
-            },
-        );
+        let name_offset = builder.create_string(&style.name);
+        let css_offset = builder.create_string(&style.css);
+        
+        let table_wip = builder.start_table();
+        builder.push_slot(0, name_offset, WIPOffset::new(0));
+        builder.push_slot(1, css_offset, WIPOffset::new(0));
+        let style_offset = builder.end_table(table_wip);
         style_offsets.push(style_offset);
     }
     let styles_vec = builder.create_vector(&style_offsets);
@@ -94,33 +84,26 @@ fn main() {
     let mut generator_offsets = Vec::new();
     for (key, config) in toml_data.generators {
         let parts: Vec<&str> = key.split('|').collect();
-        if parts.len() != 2 {
-            continue;
-        }
-        let prefix = builder.create_string(parts[0]);
-        let property = builder.create_string(parts[1]);
-        let unit = builder.create_string(&config.unit);
+        if parts.len() != 2 { continue; }
+        
+        let prefix_offset = builder.create_string(parts[0]);
+        let property_offset = builder.create_string(parts[1]);
+        let unit_offset = builder.create_string(&config.unit);
 
-        let gen_offset = style_schema::Generator::create(
-            &mut builder,
-            &style_schema::GeneratorArgs {
-                prefix: Some(prefix),
-                property: Some(property),
-                multiplier: config.multiplier,
-                unit: Some(unit),
-            },
-        );
+        let table_wip = builder.start_table();
+        builder.push_slot(0, prefix_offset, WIPOffset::new(0));
+        builder.push_slot(1, property_offset, WIPOffset::new(0));
+        builder.push_slot(2, config.multiplier, 0.0f32);
+        builder.push_slot(3, unit_offset, WIPOffset::new(0));
+        let gen_offset = builder.end_table(table_wip);
         generator_offsets.push(gen_offset);
     }
     let generators_vec = builder.create_vector(&generator_offsets);
 
-    let config_root = style_schema::Config::create(
-        &mut builder,
-        &style_schema::ConfigArgs {
-            styles: Some(styles_vec),
-            generators: Some(generators_vec),
-        },
-    );
+    let table_wip = builder.start_table();
+    builder.push_slot(0, styles_vec, WIPOffset::new(0));
+    builder.push_slot(1, generators_vec, WIPOffset::new(0));
+    let config_root = builder.end_table(table_wip);
 
     builder.finish(config_root, None);
 

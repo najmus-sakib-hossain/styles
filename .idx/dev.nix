@@ -2,9 +2,7 @@
   channel = "stable-24.05";
   packages = [
     pkgs.rustup
-    pkgs.gcc
-    pkgs.tree
-    pkgs.gnumake
+    pkgs.flatbuffers
   ];
   env = { };
   idx = {
