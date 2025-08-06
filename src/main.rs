@@ -21,6 +21,7 @@ fn main() {
     let mut file_classnames: HashMap<PathBuf, HashSet<String>> = HashMap::new();
     let mut classname_counts: HashMap<String, u32> = HashMap::new();
     let mut global_classnames: HashSet<String> = HashSet::new();
+    let mut last_processed: HashMap<PathBuf, Instant> = HashMap::new();
 
     let files = find_tsx_jsx_files(dir);
     if !files.is_empty() {
@@ -32,6 +33,7 @@ fn main() {
             let new_classnames = parse_classnames(&canonical_path);
             let (added, _, _, _) = update_maps(&canonical_path, &new_classnames, &mut file_classnames, &mut classname_counts, &mut global_classnames);
             total_added_in_files += added;
+            last_processed.insert(canonical_path, Instant::now());
         }
         
         generate_css(&global_classnames, &output_file);
@@ -63,15 +65,22 @@ fn main() {
                 for path in event.paths {
                     if is_tsx_jsx(&path) {
                         let canonical_path = std::fs::canonicalize(&path).unwrap_or_else(|_| path.to_path_buf());
+                        if let Some(last_time) = last_processed.get(&canonical_path) {
+                            if last_time.elapsed() < Duration::from_millis(100) {
+                                continue;
+                            }
+                        }
                         match event.kind {
                             notify::EventKind::Create(_) |
                             notify::EventKind::Modify(ModifyKind::Data(_)) |
                             notify::EventKind::Modify(ModifyKind::Name(_)) |
                             notify::EventKind::Access(AccessKind::Close(AccessMode::Write)) => {
                                 process_file_change(&canonical_path, &mut file_classnames, &mut classname_counts, &mut global_classnames, &output_file);
+                                last_processed.insert(canonical_path.clone(), Instant::now());
                             }
                             notify::EventKind::Remove(_) => {
                                 process_file_remove(&canonical_path, &mut file_classnames, &mut classname_counts, &mut global_classnames, &output_file);
+                                last_processed.insert(canonical_path.clone(), Instant::now());
                             }
                             _ => {}
                         }
@@ -349,7 +358,6 @@ impl ClassNameVisitor {
     }
 }
 
-
 fn update_maps(
     path: &Path,
     new_classnames: &HashSet<String>,
@@ -415,7 +423,6 @@ fn process_file_change(
     global_classnames: &mut HashSet<String>,
     output_file: &Path,
 ) {
-    std::thread::sleep(Duration::from_millis(50));
     let start = Instant::now();
     let new_classnames = parse_classnames(path);
     let (added_file, removed_file, added_global, removed_global) = update_maps(
