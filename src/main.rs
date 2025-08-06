@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::channel;
@@ -160,14 +161,12 @@ impl ClassNameVisitor {
     fn visit_jsx_opening_element(&mut self, elem: &JSXOpeningElement) {
         for attr in &elem.attributes {
             if let JSXAttributeItem::Attribute(attr) = attr {
-                let mut formatted = String::new();
                 let attr_name = match &attr.name {
-                    oxc_ast::ast::JSXAttributeName::Identifier(ident) => ident.name.as_str(),
+                    oxc_ast::ast::JSXAttributeName::Identifier(ident) => Cow::Borrowed(ident.name.as_str()),
                     oxc_ast::ast::JSXAttributeName::NamespacedName(namespaced) => {
                         let ns = namespaced.namespace.name.as_str();
                         let name = namespaced.name.name.as_str();
-                        formatted = format!("{}:{}", ns, name);
-                        formatted.as_str()
+                        Cow::Owned(format!("{}:{}", ns, name))
                     }
                 };
                 if attr_name == "className" {
