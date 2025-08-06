@@ -10,6 +10,8 @@ use std::io::Write;
 use colored::Colorize;
 use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
 use oxc_allocator::Allocator;
+// I have removed the faulty import for `ArrowFunctionExpressionBody`.
+// It is a nested type and cannot be imported directly.
 use oxc_ast::ast::{JSXAttributeItem, JSXOpeningElement, Program};
 use oxc_parser::Parser;
 use oxc_span::SourceType;
@@ -75,27 +77,17 @@ fn main() {
 
 /// Finds all .tsx and .jsx files in a given directory.
 fn find_tsx_jsx_files(dir: &Path) -> Vec<PathBuf> {
-    // fs::read_dir returns a Result<ReadDir, io::Error>. We must handle this Result.
-    // The `match` block checks if reading the directory was successful.
     match read_dir(dir) {
-        // If successful, `entries` is a `ReadDir` struct, which is an iterator.
         Ok(entries) => {
             entries
-                // Each item from the iterator is a Result<DirEntry, io::Error>.
-                // `filter_map` combined with `.ok()` is a neat way to discard any errors
-                // and get an iterator of `DirEntry`.
                 .filter_map(|entry_result| entry_result.ok())
                 .filter(|entry| {
                     let path = entry.path();
-                    // We only want actual files that have the .tsx or .jsx extension.
                     path.is_file() && is_tsx_jsx(&path)
                 })
-                // Convert the `DirEntry` into its `PathBuf`.
                 .map(|entry| entry.path())
                 .collect()
         }
-        // If reading the directory fails (e.g., it doesn't exist), we log the error
-        // and return an empty vector.
         Err(e) => {
             println!("{} Failed to read directory '{}': {}", "Error:".red(), dir.display(), e);
             Vec::new()
@@ -133,13 +125,16 @@ fn parse_classnames(path: &Path) -> HashSet<String> {
     visitor.class_names
 }
 
+/// A visitor to traverse the AST and find all `className` attributes in JSX elements.
 struct ClassNameVisitor {
     class_names: HashSet<String>,
 }
 
 impl ClassNameVisitor {
     fn new() -> Self {
-        Self { class_names: HashSet::new() }
+        Self {
+            class_names: HashSet::new(),
+        }
     }
 
     fn visit_program(&mut self, program: &Program) {
@@ -150,48 +145,71 @@ impl ClassNameVisitor {
 
     fn visit_statement(&mut self, stmt: &oxc_ast::ast::Statement) {
         match stmt {
-            oxc_ast::ast::Statement::ExpressionStatement(expr_stmt) => {
-                self.visit_expression(&expr_stmt.expression);
+            oxc_ast::ast::Statement::FunctionDeclaration(decl) => self.visit_function(decl),
+            oxc_ast::ast::Statement::ExportDefaultDeclaration(decl) => {
+                self.visit_export_default_declaration(decl)
             }
-            oxc_ast::ast::Statement::BlockStatement(block) => {
-                for stmt in &block.body {
-                    self.visit_statement(stmt);
+            oxc_ast::ast::Statement::ExportNamedDeclaration(decl) => {
+                if let Some(d) = &decl.declaration {
+                    self.visit_declaration(d);
                 }
             }
-            oxc_ast::ast::Statement::ReturnStatement(ret) => {
-                if let Some(expr) = &ret.argument {
-                    self.visit_expression(expr);
-                }
-            }
-            oxc_ast::ast::Statement::FunctionDeclaration(func) => {
-                if let Some(body) = &func.body {
-                    for stmt in &body.statements {
-                        self.visit_statement(stmt);
+            oxc_ast::ast::Statement::VariableDeclaration(decl) => {
+                for var in &decl.declarations {
+                    if let Some(init) = &var.init {
+                        self.visit_expression(init);
                     }
                 }
             }
-            oxc_ast::ast::Statement::ExportDefaultDeclaration(export) => {
-                match &export.declaration {
-                    oxc_ast::ast::ExportDefaultDeclarationKind::FunctionDeclaration(func) => {
-                        if let Some(body) = &func.body {
+            oxc_ast::ast::Statement::BlockStatement(stmt) => {
+                for s in &stmt.body {
+                    self.visit_statement(s);
+                }
+            }
+            oxc_ast::ast::Statement::ReturnStatement(stmt) => {
+                if let Some(arg) = &stmt.argument {
+                    self.visit_expression(arg);
+                }
+            }
+            oxc_ast::ast::Statement::IfStatement(stmt) => {
+                self.visit_statement(&stmt.consequent);
+                if let Some(alt) = &stmt.alternate {
+                    self.visit_statement(alt);
+                }
+            }
+            oxc_ast::ast::Statement::ExpressionStatement(stmt) => {
+                self.visit_expression(&stmt.expression);
+            }
+            oxc_ast::ast::Statement::ForStatement(stmt) => {
+                self.visit_statement(&stmt.body);
+            }
+            _ => {}
+        }
+    }
+    
+    fn visit_declaration(&mut self, decl: &oxc_ast::ast::Declaration) {
+        use oxc_ast::ast::Declaration;
+        match decl {
+            Declaration::VariableDeclaration(var_decl) => {
+                for var in &var_decl.declarations {
+                    if let Some(init) = &var.init {
+                        self.visit_expression(init);
+                    }
+                }
+            }
+            Declaration::FunctionDeclaration(func_decl) => self.visit_function(func_decl),
+            Declaration::ClassDeclaration(class_decl) => {
+                if let Some(super_class) = &class_decl.super_class {
+                    self.visit_expression(super_class);
+                }
+                for member in &class_decl.body.body {
+                     if let oxc_ast::ast::ClassElement::MethodDefinition(method) = member {
+                        if let Some(body) = &method.value.body {
                             for stmt in &body.statements {
                                 self.visit_statement(stmt);
                             }
                         }
-                    }
-                    oxc_ast::ast::ExportDefaultDeclarationKind::ArrowFunctionExpression(arrow) => {
-                        for stmt in &arrow.body.statements {
-                            self.visit_statement(stmt);
-                        }
-                    }
-                    oxc_ast::ast::ExportDefaultDeclarationKind::FunctionExpression(func) => {
-                        if let Some(body) = &func.body {
-                            for stmt in &body.statements {
-                                self.visit_statement(stmt);
-                            }
-                        }
-                    }
-                    _ => {}
+                     }
                 }
             }
             _ => {}
@@ -200,31 +218,105 @@ impl ClassNameVisitor {
 
     fn visit_expression(&mut self, expr: &oxc_ast::ast::Expression) {
         match expr {
-            oxc_ast::ast::Expression::JSXElement(jsx_elem) => {
-                self.visit_jsx_element(jsx_elem);
+            oxc_ast::ast::Expression::JSXElement(elem) => self.visit_jsx_element(elem),
+            oxc_ast::ast::Expression::JSXFragment(frag) => self.visit_jsx_fragment(frag),
+            oxc_ast::ast::Expression::FunctionExpression(expr) => self.visit_function(expr),
+            oxc_ast::ast::Expression::ArrowFunctionExpression(expr) => {
+                self.visit_arrow_function(expr)
             }
-            oxc_ast::ast::Expression::ArrowFunctionExpression(arrow) => {
-                for stmt in &arrow.body.statements {
-                    self.visit_statement(stmt);
-                }
+            oxc_ast::ast::Expression::ConditionalExpression(expr) => {
+                self.visit_expression(&expr.consequent);
+                self.visit_expression(&expr.alternate);
             }
-            oxc_ast::ast::Expression::FunctionExpression(func) => {
-                if let Some(body) = &func.body {
-                    for stmt in &body.statements {
-                        self.visit_statement(stmt);
-                    }
+            oxc_ast::ast::Expression::LogicalExpression(expr) => {
+                self.visit_expression(&expr.left);
+                self.visit_expression(&expr.right);
+            }
+            oxc_ast::ast::Expression::ParenthesizedExpression(expr) => {
+                self.visit_expression(&expr.expression)
+            }
+            oxc_ast::ast::Expression::CallExpression(expr) => {
+                for arg in &expr.arguments {
+                    self.visit_argument(arg);
                 }
             }
             _ => {}
+        }
+    }
+    
+    fn visit_argument(&mut self, arg: &oxc_ast::ast::Argument) {
+        match arg {
+            oxc_ast::ast::Argument::SpreadElement(spread) => {
+                self.visit_expression(&spread.argument);
+            }
+            _ => if let Some(expr) = arg.as_expression() {
+                self.visit_expression(expr);
+            }
+        }
+    }
+    
+    fn visit_export_default_declaration(
+        &mut self,
+        decl: &oxc_ast::ast::ExportDefaultDeclaration,
+    ) {
+        use oxc_ast::ast::ExportDefaultDeclarationKind;
+        match &decl.declaration {
+            ExportDefaultDeclarationKind::FunctionDeclaration(func) => self.visit_function(func),
+            ExportDefaultDeclarationKind::ArrowFunctionExpression(func) => {
+                self.visit_arrow_function(func)
+            }
+            ExportDefaultDeclarationKind::FunctionExpression(func) => self.visit_function(func),
+            kind => if let Some(expr) = kind.as_expression() {
+                self.visit_expression(expr);
+            }
+        }
+    }
+
+    fn visit_function(&mut self, func: &oxc_ast::ast::Function) {
+        if let Some(body) = &func.body {
+            for stmt in &body.statements {
+                self.visit_statement(stmt);
+            }
+        }
+    }
+
+    fn visit_arrow_function(&mut self, func: &oxc_ast::ast::ArrowFunctionExpression) {
+        let body = &func.body; // body is FunctionBody<'_>
+        for stmt in &body.statements {
+            match stmt {
+                oxc_ast::ast::Statement::ExpressionStatement(expr_stmt) => {
+                    self.visit_expression(&expr_stmt.expression);
+                }
+                _ => {
+                    self.visit_statement(stmt);
+                }
+            }
         }
     }
 
     fn visit_jsx_element(&mut self, elem: &oxc_ast::ast::JSXElement) {
         self.visit_jsx_opening_element(&elem.opening_element);
         for child in &elem.children {
-            if let oxc_ast::ast::JSXChild::Element(child_elem) = child {
-                self.visit_jsx_element(child_elem);
+            self.visit_jsx_child(child);
+        }
+    }
+
+    fn visit_jsx_fragment(&mut self, frag: &oxc_ast::ast::JSXFragment) {
+        for child in &frag.children {
+            self.visit_jsx_child(child);
+        }
+    }
+
+    fn visit_jsx_child(&mut self, child: &oxc_ast::ast::JSXChild) {
+        match child {
+            oxc_ast::ast::JSXChild::Element(elem) => self.visit_jsx_element(elem),
+            oxc_ast::ast::JSXChild::Fragment(frag) => self.visit_jsx_fragment(frag),
+            oxc_ast::ast::JSXChild::ExpressionContainer(container) => {
+                if let Some(expr) = container.expression.as_expression() {
+                    self.visit_expression(expr);
+                }
             }
+            _ => {}
         }
     }
 
@@ -232,7 +324,9 @@ impl ClassNameVisitor {
         for attr in &elem.attributes {
             if let JSXAttributeItem::Attribute(attr) = attr {
                 let attr_name = match &attr.name {
-                    oxc_ast::ast::JSXAttributeName::Identifier(ident) => Cow::Borrowed(ident.name.as_str()),
+                    oxc_ast::ast::JSXAttributeName::Identifier(ident) => {
+                        Cow::Borrowed(ident.name.as_str())
+                    }
                     oxc_ast::ast::JSXAttributeName::NamespacedName(namespaced) => {
                         let ns = namespaced.namespace.name.as_str();
                         let name = namespaced.name.name.as_str();
@@ -252,6 +346,7 @@ impl ClassNameVisitor {
         }
     }
 }
+
 
 fn update_maps(
     path: &Path,
