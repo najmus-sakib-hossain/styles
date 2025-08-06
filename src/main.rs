@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fs::{self, File};
 use std::io::Write;
@@ -15,33 +14,36 @@ use oxc_span::SourceType;
 use walkdir::WalkDir;
 
 mod styles_generated {
-    #![allow(dead_code, unused_imports)]
+    #![allow(unsafe_op_in_unsafe_fn, unused_imports)]
     include!(concat!(env!("OUT_DIR"), "/styles_generated.rs"));
 }
 use styles_generated::style_schema;
 
-struct StyleEngine {
+struct StyleEngine<'a> {
     precompiled: HashMap<String, String>,
-    generators: Vec<style_schema::Generator<'static>>,
+    generators: Vec<style_schema::Generator<'a>>,
     _buffer: Vec<u8>,
 }
 
-impl StyleEngine {
+impl<'a> StyleEngine<'a> {
     fn new() -> Result<Self, Box<dyn std::error::Error>> {
         let buffer = fs::read("styles.bin")?;
-        let config = unsafe { flatbuffers::root_unchecked::<style_schema::Config>(&buffer) };
-
         let mut precompiled = HashMap::new();
-        if let Some(styles) = config.styles() {
-            for style in styles {
-                if let (Some(name), Some(css)) = (style.name(), style.css()) {
-                    precompiled.insert(name.to_string(), css.to_string());
+        let generators;
+        {
+            let config = unsafe { flatbuffers::root_unchecked::<style_schema::Config>(&buffer) };
+            if let Some(styles) = config.styles() {
+                for style in styles {
+                    let name = style.name();
+                    if let Some(css) = style.css() {
+                        precompiled.insert(name.to_string(), css.to_string());
+                    }
                 }
             }
+            generators = config.generators().map_or_else(Vec::new, |gens| {
+                gens.iter().map(|g| unsafe { style_schema::Generator::init_from_table(g._tab) }).collect()
+            });
         }
-
-        let generators = config.generators().map_or_else(Vec::new, |gens| gens.iter().collect());
-
         Ok(Self {
             precompiled,
             generators,
@@ -54,12 +56,16 @@ impl StyleEngine {
             return Some(format!(".{} {{\n    {}\n}}", class_name, css));
         }
 
-        for gen in &self.generators {
-            if let (Some(prefix), Some(property), Some(unit)) = (gen.prefix(), gen.property(), gen.unit()) {
+        for generator in &self.generators {
+            if let (Some(prefix), Some(property), Some(unit)) = (
+                generator.prefix(),
+                generator.property(),
+                generator.unit(),
+            ) {
                 if class_name.starts_with(&format!("{}-", prefix)) {
                     let value_str = &class_name[prefix.len() + 1..];
                     if let Ok(num_val) = value_str.parse::<f32>() {
-                        let final_value = num_val * gen.multiplier();
+                        let final_value = num_val * generator.multiplier();
                         let css = format!("{}: {}{};", property, final_value, unit);
                         return Some(format!(".{} {{\n    {}\n}}", class_name, css));
                     }
@@ -289,7 +295,7 @@ impl ClassNameVisitor {
             ast::JSXChild::Element(elem) => self.visit_jsx_element(elem),
             ast::JSXChild::Fragment(frag) => self.visit_jsx_fragment(frag),
             ast::JSXChild::ExpressionContainer(container) => {
-                if let ast::JSXExpression::Expression(expr) = &container.expression {
+                if let Some(expr) = container.expression.as_expression() {
                     self.visit_expression(expr);
                 }
             }
