@@ -74,8 +74,8 @@ fn main() {
         let css_offset = builder.create_string(&style.css);
         
         let table_wip = builder.start_table();
-        builder.push_slot(0, name_offset, WIPOffset::new(0));
-        builder.push_slot(1, css_offset, WIPOffset::new(0));
+        builder.push_slot(4, name_offset, WIPOffset::new(0));
+        builder.push_slot(6, css_offset, WIPOffset::new(0));
         let style_offset = builder.end_table(table_wip);
         style_offsets.push(style_offset);
     }
@@ -91,18 +91,18 @@ fn main() {
         let unit_offset = builder.create_string(&config.unit);
 
         let table_wip = builder.start_table();
-        builder.push_slot(0, prefix_offset, WIPOffset::new(0));
-        builder.push_slot(1, property_offset, WIPOffset::new(0));
-        builder.push_slot(2, config.multiplier, 0.0f32);
-        builder.push_slot(3, unit_offset, WIPOffset::new(0));
+        builder.push_slot(4, prefix_offset, WIPOffset::new(0));
+        builder.push_slot(6, property_offset, WIPOffset::new(0));
+        builder.push_slot(8, config.multiplier, 0.0f32);
+        builder.push_slot(10, unit_offset, WIPOffset::new(0));
         let gen_offset = builder.end_table(table_wip);
         generator_offsets.push(gen_offset);
     }
     let generators_vec = builder.create_vector(&generator_offsets);
 
     let table_wip = builder.start_table();
-    builder.push_slot(0, styles_vec, WIPOffset::new(0));
-    builder.push_slot(1, generators_vec, WIPOffset::new(0));
+    builder.push_slot(4, styles_vec, WIPOffset::new(0));
+    builder.push_slot(6, generators_vec, WIPOffset::new(0));
     let config_root = builder.end_table(table_wip);
 
     builder.finish(config_root, None);
