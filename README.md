@@ -2,22 +2,32 @@
 
 ```toml
 [package]
-name = "tsx_jsx_watcher"
+name = "dx_styles"
 version = "0.1.0"
 edition = "2021"
 
-[dependencies]
-notify = "6.1"
-oxc_parser = "0.31"
-oxc_allocator = "0.31"
-oxc_ast = "0.31"
-oxc_span = "0.31"
-colored = "2.1"
-walkdir = "2.5"
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[dependencies]
+colored = "2.1.0"
+notify = "6.1.1"
+oxc_allocator = "0.10.0"
+oxc_ast = "0.10.0"
+oxc_parser = "0.10.0"
+oxc_span = "0.10.0"
+flatbuffers = "24.3.25"
+toml = "0.8.13"
+serde = { version = "1.0", features = ["derive"] }
+
+[build-dependencies]
+flatc_rust = "23.5.26"
+toml = "0.8.13"
+serde = { version = "1.0", features = ["derive"] }
+flatbuffers = "24.3.25"
 ```
 
 ```bash
+cargo add flatbuffers serde toml flatc_rust
 cargo add notify oxc_parser oxc_allocator oxc_span oxc_ast colored walkdir
 cargo run --release
 
