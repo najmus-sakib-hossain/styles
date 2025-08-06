@@ -10,8 +10,6 @@ use std::io::Write;
 use colored::Colorize;
 use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
 use oxc_allocator::Allocator;
-// I have removed the faulty import for `ArrowFunctionExpressionBody`.
-// It is a nested type and cannot be imported directly.
 use oxc_ast::ast::{JSXAttributeItem, JSXOpeningElement, Program};
 use oxc_parser::Parser;
 use oxc_span::SourceType;
@@ -75,7 +73,6 @@ fn main() {
     }
 }
 
-/// Finds all .tsx and .jsx files in a given directory.
 fn find_tsx_jsx_files(dir: &Path) -> Vec<PathBuf> {
     match read_dir(dir) {
         Ok(entries) => {
@@ -125,7 +122,6 @@ fn parse_classnames(path: &Path) -> HashSet<String> {
     visitor.class_names
 }
 
-/// A visitor to traverse the AST and find all `className` attributes in JSX elements.
 struct ClassNameVisitor {
     class_names: HashSet<String>,
 }
@@ -204,11 +200,11 @@ impl ClassNameVisitor {
                 }
                 for member in &class_decl.body.body {
                      if let oxc_ast::ast::ClassElement::MethodDefinition(method) = member {
-                        if let Some(body) = &method.value.body {
-                            for stmt in &body.statements {
-                                self.visit_statement(stmt);
-                            }
-                        }
+                         if let Some(body) = &method.value.body {
+                             for stmt in &body.statements {
+                                 self.visit_statement(stmt);
+                             }
+                         }
                      }
                 }
             }
@@ -281,7 +277,7 @@ impl ClassNameVisitor {
     }
 
     fn visit_arrow_function(&mut self, func: &oxc_ast::ast::ArrowFunctionExpression) {
-        let body = &func.body; // body is FunctionBody<'_>
+        let body = &func.body;
         for stmt in &body.statements {
             match stmt {
                 oxc_ast::ast::Statement::ExpressionStatement(expr_stmt) => {
