@@ -17,11 +17,11 @@ use oxc_span::SourceType;
 fn main() {
     let dir = Path::new("src");
     let output_dir = Path::new(".");
+    let output_file = output_dir.join("styles.css");
 
     let mut file_classnames: HashMap<PathBuf, HashSet<String>> = HashMap::new();
     let mut classname_counts: HashMap<String, u32> = HashMap::new();
     let mut global_classnames: HashSet<String> = HashSet::new();
-    let processed_paths = Arc::new(Mutex::new(HashSet::<PathBuf>::new()));
 
     let files = find_tsx_jsx_files(dir);
     if !files.is_empty() {
@@ -29,19 +29,20 @@ fn main() {
         let mut total_added_in_files = 0;
 
         for file in &files {
-            let new_classnames = parse_classnames(file);
-            total_added_in_files += new_classnames.len();
-            update_maps(file, &new_classnames, &mut file_classnames, &mut classname_counts, &mut global_classnames);
+            let canonical_path = std::fs::canonicalize(file).unwrap_or_else(|_| file.to_path_buf());
+            let new_classnames = parse_classnames(&canonical_path);
+            let (added, _, _, _) = update_maps(&canonical_path, &new_classnames, &mut file_classnames, &mut classname_counts, &mut global_classnames);
+            total_added_in_files += added;
         }
         
-        generate_css(&global_classnames, &output_dir.join("styles.css"));
+        generate_css(&global_classnames, &output_file);
         let scan_duration = scan_start.elapsed();
         
         log_change(
             dir,
             total_added_in_files,
             0,
-            &output_dir.join("styles.css"),
+            &output_file,
             global_classnames.len(),
             0,
             scan_duration.as_micros()
@@ -50,10 +51,10 @@ fn main() {
         println!("{}", "No .tsx or .jsx files found in src/.".yellow());
     }
     
-    println!("{}", "Watching for file changes...".bold().cyan());
+    println!("{}", "Dx Styles is watching for file changes...".bold().cyan());
 
     let (tx, rx) = channel();
-    let config = Config::default().with_poll_interval(Duration::from_millis(1000));
+    let config = Config::default().with_poll_interval(Duration::from_millis(50));
     let mut watcher = RecommendedWatcher::new(tx, config).unwrap();
     watcher.watch(dir, RecursiveMode::NonRecursive).unwrap();
 
@@ -61,35 +62,19 @@ fn main() {
         match rx.recv() {
             Ok(Ok(event)) => {
                 for path in event.paths {
-                    let processed_paths_clone = Arc::clone(&processed_paths);
                     if is_tsx_jsx(&path) {
-                        let mut paths = processed_paths_clone.lock().unwrap();
-                        if !paths.contains(&path) {
-                            match event.kind {
-                                notify::EventKind::Create(_) |
-                                notify::EventKind::Modify(ModifyKind::Data(_)) |
-                                notify::EventKind::Modify(ModifyKind::Name(_)) |
-                                notify::EventKind::Access(AccessKind::Close(AccessMode::Write)) => {
-                                    paths.insert(path.clone());
-                                    process_file_change(&path, &mut file_classnames, &mut classname_counts, &mut global_classnames, output_dir);
-                                }
-                                notify::EventKind::Remove(_) => {
-                                    paths.insert(path.clone());
-                                    process_file_remove(&path, &mut file_classnames, &mut classname_counts, &mut global_classnames, output_dir);
-                                }
-                                _ => {}
+                        let canonical_path = std::fs::canonicalize(&path).unwrap_or_else(|_| path.to_path_buf());
+                        match event.kind {
+                            notify::EventKind::Create(_) |
+                            notify::EventKind::Modify(ModifyKind::Data(_)) |
+                            notify::EventKind::Modify(ModifyKind::Name(_)) |
+                            notify::EventKind::Access(AccessKind::Close(AccessMode::Write)) => {
+                                process_file_change(&canonical_path, &mut file_classnames, &mut classname_counts, &mut global_classnames, &output_file);
                             }
-                            
-                            if paths.contains(&path) {
-                                std::thread::spawn({
-                                    let path_clone = path.clone();
-                                    let processed_paths_clone_for_thread = Arc::clone(&processed_paths);
-                                    move || {
-                                        std::thread::sleep(Duration::from_millis(500));
-                                        processed_paths_clone_for_thread.lock().unwrap().remove(&path_clone);
-                                    }
-                                });
+                            notify::EventKind::Remove(_) => {
+                                process_file_remove(&canonical_path, &mut file_classnames, &mut classname_counts, &mut global_classnames, &output_file);
                             }
+                            _ => {}
                         }
                     }
                 }
@@ -429,8 +414,9 @@ fn process_file_change(
     file_classnames: &mut HashMap<PathBuf, HashSet<String>>,
     classname_counts: &mut HashMap<String, u32>,
     global_classnames: &mut HashSet<String>,
-    dir: &Path,
+    output_file: &Path,
 ) {
+    std::thread::sleep(Duration::from_millis(50));
     let start = Instant::now();
     let new_classnames = parse_classnames(path);
     let (added_file, removed_file, added_global, removed_global) = update_maps(
@@ -441,10 +427,10 @@ fn process_file_change(
         global_classnames,
     );
     if added_global > 0 || removed_global > 0 {
-        generate_css(global_classnames, &dir.join("styles.css"));
+        generate_css(global_classnames, output_file);
     }
     let time_us = start.elapsed().as_micros();
-    log_change(path, added_file, removed_file, &dir.join("styles.css"), added_global, removed_global, time_us);
+    log_change(path, added_file, removed_file, output_file, added_global, removed_global, time_us);
 }
 
 fn process_file_remove(
@@ -452,7 +438,7 @@ fn process_file_remove(
     file_classnames: &mut HashMap<PathBuf, HashSet<String>>,
     classname_counts: &mut HashMap<String, u32>,
     global_classnames: &mut HashSet<String>,
-    dir: &Path,
+    output_file: &Path,
 ) {
     if let Some(old_classnames) = file_classnames.remove(path) {
         let start = Instant::now();
@@ -467,10 +453,10 @@ fn process_file_remove(
             }
         }
         if removed_in_global > 0 {
-            generate_css(global_classnames, &dir.join("styles.css"));
+            generate_css(global_classnames, output_file);
         }
         let time_us = start.elapsed().as_micros();
-        log_change(path, 0, old_classnames.len(), &dir.join("styles.css"), 0, removed_in_global, time_us);
+        log_change(path, 0, old_classnames.len(), output_file, 0, removed_in_global, time_us);
     }
 }
 
@@ -483,8 +469,27 @@ fn log_change(
     removed_global: usize,
     time_us: u128,
 ) {
-    let source_str = source_path.strip_prefix("./").unwrap_or(source_path).display().to_string();
-    let output_str = output_path.strip_prefix("./").unwrap_or(output_path).display().to_string();
+    if added_file == 0 && removed_file == 0 && added_global == 0 && removed_global == 0 {
+        return;
+    }
+
+    let source_str = if source_path.is_dir() {
+        source_path.strip_prefix("./").unwrap_or(source_path).display().to_string()
+    } else {
+        std::fs::canonicalize(source_path)
+            .unwrap_or_else(|_| source_path.to_path_buf())
+            .display()
+            .to_string()
+    };
+    
+    let output_str = if source_path.is_dir() {
+        output_path.strip_prefix("./").unwrap_or(output_path).display().to_string()
+    } else {
+        std::fs::canonicalize(output_path)
+            .unwrap_or_else(|_| output_path.to_path_buf())
+            .display()
+            .to_string()
+    };
     
     let file_changes = format!(
         "({}, {})",

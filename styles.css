@@ -13,7 +13,13 @@
 .happy {
     color: red;
 }
+.hi {
+    color: red;
+}
 .hidden {
+    color: red;
+}
+.hover {
     color: red;
 }
 .items-center {
@@ -21,6 +27,9 @@
 }
 .justify-center {
     justify-content: center;
+}
+.no {
+    color: red;
 }
 .sad {
     color: red;
@@ -35,5 +44,11 @@
     width: 100%;
 }
 .work {
+    color: red;
+}
+.wow {
+    color: red;
+}
+.yes {
     color: red;
 }
