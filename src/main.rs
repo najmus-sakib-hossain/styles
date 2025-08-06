@@ -1,9 +1,10 @@
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 use std::sync::mpsc::channel;
 use std::time::{Duration, Instant};
-use std::fs::File;
+use std::fs::{File, read_dir};
 use std::io::Write;
 
 use colored::Colorize;
@@ -12,47 +13,60 @@ use oxc_allocator::Allocator;
 use oxc_ast::ast::{JSXAttributeItem, JSXOpeningElement, Program};
 use oxc_parser::Parser;
 use oxc_span::SourceType;
-use walkdir::WalkDir;
 
 fn main() {
-    let dir = std::env::args().nth(1).unwrap_or_else(|| ".".to_string());
-    let dir = Path::new(&dir);
+    let dir = Path::new("src");
+    let output_dir = Path::new(".");
 
     let mut file_classnames: HashMap<PathBuf, HashSet<String>> = HashMap::new();
     let mut classname_counts: HashMap<String, u32> = HashMap::new();
     let mut global_classnames: HashSet<String> = HashSet::new();
+    let processed_paths = Arc::new(Mutex::new(HashSet::<PathBuf>::new()));
 
     let files = find_tsx_jsx_files(dir);
     for file in files {
         let class_names = parse_classnames(&file);
+        println!("Parsed class names for {}: {:?}", file.display(), class_names);
         update_maps(&file, &class_names, &mut file_classnames, &mut classname_counts, &mut global_classnames);
     }
-    generate_css(&global_classnames, &dir.join("styles.css"));
+    generate_css(&global_classnames, &output_dir.join("styles.css"));
 
     let (tx, rx) = channel();
-    let config = Config::default().with_poll_interval(Duration::from_millis(100));
+    let config = Config::default().with_poll_interval(Duration::from_millis(1000));
     let mut watcher = RecommendedWatcher::new(tx, config).unwrap();
-    watcher.watch(dir, RecursiveMode::Recursive).unwrap();
+    watcher.watch(dir, RecursiveMode::NonRecursive).unwrap();
 
     loop {
         match rx.recv() {
-            Ok(Ok(event)) => match event.kind {
-                notify::EventKind::Create(_) | notify::EventKind::Modify(_) => {
-                    for path in event.paths {
-                        if is_tsx_jsx(&path) {
-                            process_file_change(&path, &mut file_classnames, &mut classname_counts, &mut global_classnames, dir);
+            Ok(Ok(event)) => {
+                println!("Received event: {:?}", event);
+                for path in event.paths {
+                    let processed_paths = Arc::clone(&processed_paths);
+                    if is_tsx_jsx(&path) {
+                        let mut paths = processed_paths.lock().unwrap();
+                        if !paths.contains(&path) {
+                            paths.insert(path.clone());
+                            match event.kind {
+                                notify::EventKind::Create(_) | notify::EventKind::Modify(_) => {
+                                    process_file_change(&path, &mut file_classnames, &mut classname_counts, &mut global_classnames, output_dir);
+                                }
+                                notify::EventKind::Remove(_) => {
+                                    process_file_remove(&path, &mut file_classnames, &mut classname_counts, &mut global_classnames, output_dir);
+                                }
+                                _ => {}
+                            }
+                            std::thread::spawn({
+                                let path = path.clone();
+                                let processed_paths = Arc::clone(&processed_paths);
+                                move || {
+                                    std::thread::sleep(Duration::from_millis(2000));
+                                    processed_paths.lock().unwrap().remove(&path);
+                                }
+                            });
                         }
                     }
                 }
-                notify::EventKind::Remove(_) => {
-                    for path in event.paths {
-                        if is_tsx_jsx(&path) {
-                            process_file_remove(&path, &mut file_classnames, &mut classname_counts, &mut global_classnames, dir);
-                        }
-                    }
-                }
-                _ => {}
-            },
+            }
             Ok(Err(e)) => println!("Watch error: {:?}", e),
             Err(e) => println!("Channel error: {:?}", e),
         }
@@ -60,14 +74,14 @@ fn main() {
 }
 
 fn find_tsx_jsx_files(dir: &Path) -> Vec<PathBuf> {
-    WalkDir::new(dir)
+    read_dir(dir)
         .into_iter()
         .filter_map(|e| e.ok())
         .filter(|e| {
             let path = e.path();
-            path.extension().map_or(false, |ext| ext == "tsx" || ext == "jsx")
+            path.is_file() && path.extension().map_or(false, |ext| ext == "tsx" || ext == "jsx")
         })
-        .map(|e| e.path().to_path_buf())
+        .map(|e| e.path())
         .collect()
 }
 
@@ -78,20 +92,27 @@ fn is_tsx_jsx(path: &Path) -> bool {
 fn parse_classnames(path: &Path) -> HashSet<String> {
     let source_text = match std::fs::read_to_string(path) {
         Ok(text) => text,
-        Err(_) => return HashSet::new(),
+        Err(e) => {
+            println!("Error reading {}: {:?}", path.display(), e);
+            return HashSet::new();
+        }
     };
     let allocator = Allocator::default();
     let source_type = SourceType::from_path(path).unwrap_or(SourceType::default().with_jsx(true).with_typescript(true));
     let parser = Parser::new(&allocator, &source_text, source_type);
     let parse_result = parser.parse();
 
-    if parse_result.errors.is_empty() {
-        let mut visitor = ClassNameVisitor::new();
-        visitor.visit_program(&parse_result.program);
-        visitor.class_names
-    } else {
-        HashSet::new()
+    if !parse_result.errors.is_empty() {
+        println!("Parse errors for {}: {:?}", path.display(), parse_result.errors);
+        return HashSet::new();
     }
+
+    let mut visitor = ClassNameVisitor::new();
+    visitor.visit_program(&parse_result.program);
+    if visitor.class_names.is_empty() {
+        println!("No class names found in {}: AST may not contain expected JSX structure", path.display());
+    }
+    visitor.class_names
 }
 
 struct ClassNameVisitor {
@@ -122,6 +143,37 @@ impl ClassNameVisitor {
             oxc_ast::ast::Statement::ReturnStatement(ret) => {
                 if let Some(expr) = &ret.argument {
                     self.visit_expression(expr);
+                }
+            }
+            oxc_ast::ast::Statement::FunctionDeclaration(func) => {
+                if let Some(body) = &func.body {
+                    for stmt in &body.statements {
+                        self.visit_statement(stmt);
+                    }
+                }
+            }
+            oxc_ast::ast::Statement::ExportDefaultDeclaration(export) => {
+                match &export.declaration {
+                    oxc_ast::ast::ExportDefaultDeclarationKind::FunctionDeclaration(func) => {
+                        if let Some(body) = &func.body {
+                            for stmt in &body.statements {
+                                self.visit_statement(stmt);
+                            }
+                        }
+                    }
+                    oxc_ast::ast::ExportDefaultDeclarationKind::ArrowFunctionExpression(arrow) => {
+                        for stmt in &arrow.body.statements {
+                            self.visit_statement(stmt);
+                        }
+                    }
+                    oxc_ast::ast::ExportDefaultDeclarationKind::FunctionExpression(func) => {
+                        if let Some(body) = &func.body {
+                            for stmt in &body.statements {
+                                self.visit_statement(stmt);
+                            }
+                        }
+                    }
+                    _ => {}
                 }
             }
             _ => {}
@@ -225,7 +277,6 @@ fn generate_css(class_names: &HashSet<String>, output_path: &Path) {
     let mut sorted_class_names: Vec<_> = class_names.iter().collect();
     sorted_class_names.sort();
 
-    // Map Tailwind-like class names to CSS rules
     let class_map: HashMap<&str, &str> = [
         ("h-full", "height: 100%;"),
         ("w-full", "width: 100%;"),
@@ -240,6 +291,7 @@ fn generate_css(class_names: &HashSet<String>, output_path: &Path) {
         let style = class_map.get(cn.as_str()).unwrap_or(&"color: red;");
         writeln!(file, ".{} {{\n    {}\n}}", cn, style).unwrap();
     }
+    println!("Generated CSS for {} classes: {:?}", class_names.len(), class_names);
 }
 
 fn process_file_change(
@@ -297,8 +349,8 @@ fn log_change(
     removed_global: usize,
     time_ms: u128,
 ) {
-    let source_str = format!("./{}", source_path.display());
-    let output_str = format!("./{}", output_path.display());
+    let source_str = source_path.strip_prefix("./").unwrap_or(source_path).display().to_string();
+    let output_str = output_path.strip_prefix("./").unwrap_or(output_path).display().to_string();
     let file_changes = format!("(+{},{})", added_file, format!("-{}", removed_file).red()).green();
     let output_changes = format!("(+{},{})", added_global, format!("-{}", removed_global).red()).green();
     println!(
