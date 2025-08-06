@@ -2,7 +2,7 @@ import React from "react";
 
 export default function Homepage(){
     return(
-        <div className="hover wow hi no yes sad work happy hidden test grid h-full w-full flex items-center justify-center">
+        <div className="hover hello hi no yes sad work happy hidden test grid h-full w-full flex items-center justify-center">
             <span className="text-3xl font-bold">Dx</span>
         </div>
     )

@@ -1,7 +1,6 @@
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
 use std::sync::mpsc::channel;
 use std::time::{Duration, Instant};
 use std::fs::{File, read_dir};
@@ -504,7 +503,7 @@ fn log_change(
     );
 
     let time_str = if time_us < 1000 {
-        format!("{}µs", time_us)
+        format!("{}qs", time_us)
     } else {
         format!("{}ms", time_us / 1000)
     };
