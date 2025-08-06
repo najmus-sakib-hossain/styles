@@ -8,7 +8,7 @@ use std::time::{Duration, Instant};
 use colored::Colorize;
 use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
 use oxc_allocator::Allocator;
-use oxc_ast::ast::{self, JSXAttributeItem, JSXOpeningElement, Program};
+use oxc_ast::ast::{self, ExportDefaultDeclarationKind, JSXAttributeItem, JSXOpeningElement, Program};
 use oxc_parser::Parser;
 use oxc_span::SourceType;
 use walkdir::WalkDir;
@@ -19,8 +19,6 @@ mod styles_generated {
 }
 use styles_generated::style_schema;
 
-// FIX: The StyleEngine no longer needs a lifetime parameter.
-// It now owns the buffer and accesses the generators on-demand.
 struct StyleEngine {
     precompiled: HashMap<String, String>,
     buffer: Vec<u8>,
@@ -41,8 +39,6 @@ impl StyleEngine {
             }
         }
 
-        // The generators are no longer stored directly in the struct.
-        // We now own the buffer itself.
         Ok(Self {
             precompiled,
             buffer,
@@ -54,8 +50,6 @@ impl StyleEngine {
             return Some(format!(".{} {{\n    {}\n}}", class_name, css));
         }
 
-        // FIX: Access the generators directly from the owned buffer when needed.
-        // This is still extremely fast and solves all lifetime issues.
         let config = unsafe { flatbuffers::root_unchecked::<style_schema::Config>(&self.buffer) };
         if let Some(generators) = config.generators() {
             for generator in generators {
@@ -250,9 +244,21 @@ impl ClassNameVisitor {
             _ => {}
         }
     }
-
+    
     fn visit_export_default_declaration(&mut self, decl: &ast::ExportDefaultDeclaration) {
-        self.visit_expression(decl.declaration.to_expression());
+        match &decl.declaration {
+            ExportDefaultDeclarationKind::FunctionDeclaration(func) => self.visit_function(func),
+            ExportDefaultDeclarationKind::ArrowFunctionExpression(expr) => {
+                for stmt in &expr.body.statements {
+                    self.visit_statement(stmt);
+                }
+            }
+            kind => {
+                if let Some(expr) = kind.as_expression() {
+                    self.visit_expression(expr);
+                }
+            }
+        }
     }
 
     fn visit_function(&mut self, func: &ast::Function) {
@@ -276,6 +282,7 @@ impl ClassNameVisitor {
                     self.visit_statement(stmt);
                 }
             }
+            ast::Expression::ParenthesizedExpression(expr) => self.visit_expression(&expr.expression),
             _ => {}
         }
     }
