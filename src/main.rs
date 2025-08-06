@@ -73,16 +73,34 @@ fn main() {
     }
 }
 
+/// Finds all .tsx and .jsx files in a given directory.
 fn find_tsx_jsx_files(dir: &Path) -> Vec<PathBuf> {
-    read_dir(dir)
-        .into_iter()
-        .filter_map(|e| e.ok())
-        .filter(|e| {
-            let path = e.path();
-            path.is_file() && path.extension().map_or(false, |ext| ext == "tsx" || ext == "jsx")
-        })
-        .map(|e| e.path())
-        .collect()
+    // fs::read_dir returns a Result<ReadDir, io::Error>. We must handle this Result.
+    // The `match` block checks if reading the directory was successful.
+    match read_dir(dir) {
+        // If successful, `entries` is a `ReadDir` struct, which is an iterator.
+        Ok(entries) => {
+            entries
+                // Each item from the iterator is a Result<DirEntry, io::Error>.
+                // `filter_map` combined with `.ok()` is a neat way to discard any errors
+                // and get an iterator of `DirEntry`.
+                .filter_map(|entry_result| entry_result.ok())
+                .filter(|entry| {
+                    let path = entry.path();
+                    // We only want actual files that have the .tsx or .jsx extension.
+                    path.is_file() && is_tsx_jsx(&path)
+                })
+                // Convert the `DirEntry` into its `PathBuf`.
+                .map(|entry| entry.path())
+                .collect()
+        }
+        // If reading the directory fails (e.g., it doesn't exist), we log the error
+        // and return an empty vector.
+        Err(e) => {
+            println!("{} Failed to read directory '{}': {}", "Error:".red(), dir.display(), e);
+            Vec::new()
+        }
+    }
 }
 
 fn is_tsx_jsx(path: &Path) -> bool {
