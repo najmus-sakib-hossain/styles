@@ -4,9 +4,7 @@
 [package]
 name = "dx_styles"
 version = "0.1.0"
-edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+edition = "2024"
 
 [dependencies]
 colored = "2.1.0"
