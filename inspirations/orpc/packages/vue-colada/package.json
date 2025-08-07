@@ -1,0 +1,53 @@
+{
+  "name": "@orpc/vue-colada",
+  "type": "module",
+  "version": "1.7.10",
+  "license": "MIT",
+  "homepage": "https://orpc.unnoq.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/unnoq/orpc.git",
+    "directory": "packages/vue-colada"
+  },
+  "keywords": [
+    "unnoq",
+    "orpc",
+    "vue",
+    "vue-colada",
+    "pinia-colada",
+    "tanstack"
+  ],
+  "publishConfig": {
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.mts",
+        "import": "./dist/index.mjs",
+        "default": "./dist/index.mjs"
+      }
+    }
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "unbuild",
+    "build:watch": "pnpm run build --watch",
+    "type:check": "tsc -b"
+  },
+  "peerDependencies": {
+    "@pinia/colada": ">=0.16.0",
+    "vue": ">=3.3.0"
+  },
+  "dependencies": {
+    "@orpc/client": "workspace:*",
+    "@orpc/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@pinia/colada": "^0.17.1",
+    "pinia": "^3.0.2",
+    "vue": "^3.5.18"
+  }
+}

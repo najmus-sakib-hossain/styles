@@ -1,0 +1,33 @@
+[package]
+edition = "2024"
+name    = "xtask_coverage"
+publish = false
+version = "0.0.0"
+
+[dependencies]
+ascii_table        = "4.0.7"
+backtrace          = "0.3.75"
+biome_console      = { workspace = true }
+biome_diagnostics  = { workspace = true }
+biome_js_parser    = { workspace = true }
+biome_js_semantic  = { workspace = true }
+biome_js_syntax    = { workspace = true }
+biome_parser       = { workspace = true }
+biome_rowan        = { workspace = true }
+biome_string_case  = { workspace = true }
+camino             = { workspace = true }
+colored            = "3.0.0"
+indicatif          = { version = "0.18.0", features = ["improved_unicode"] }
+pico-args          = { version = "0.5.0", features = ["eq-separator"] }
+regex              = { workspace = true }
+serde              = { workspace = true, features = ["derive"] }
+serde_json         = { workspace = true }
+serde_yaml         = "0.9.34"
+tracing            = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["env-filter", "std"] }
+walkdir            = { workspace = true }
+xtask              = { path = '../', version = "0.0" }
+yastl              = "0.1.2"
+
+[lints]
+workspace = true

@@ -1,0 +1,20 @@
+[package]
+authors.workspace    = true
+categories.workspace = true
+description          = "Utilities to suppress diagnostics"
+edition.workspace    = true
+homepage.workspace   = true
+keywords.workspace   = true
+license.workspace    = true
+name                 = "biome_suppression"
+repository.workspace = true
+version              = "0.5.7"
+
+
+[dependencies]
+biome_console     = { workspace = true }
+biome_diagnostics = { workspace = true }
+biome_rowan       = { workspace = true }
+
+[lints]
+workspace = true

@@ -1,0 +1,25 @@
+[package]
+authors.workspace    = true
+categories.workspace = true
+description          = "Diagnostic categories for biome_diagnostics"
+edition.workspace    = true
+homepage.workspace   = true
+keywords.workspace   = true
+license.workspace    = true
+name                 = "biome_diagnostics_categories"
+repository.workspace = true
+version              = "0.5.7"
+
+[dependencies]
+schemars = { workspace = true, optional = true }
+serde    = { workspace = true, optional = true }
+
+[build-dependencies]
+quote = "1.0.14"
+
+[features]
+schema = ["dep:schemars", "serde"]
+serde  = ["dep:serde"]
+
+[lints]
+workspace = true

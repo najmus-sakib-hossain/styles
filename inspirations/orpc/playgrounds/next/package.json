@@ -1,0 +1,31 @@
+{
+  "name": "@orpc/next-playground",
+  "version": "1.7.10",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack --port 3000",
+    "build": "next build",
+    "start": "next start --port 3000",
+    "lint": "next lint",
+    "type:check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@orpc/client": "next",
+    "@orpc/json-schema": "next",
+    "@orpc/openapi": "next",
+    "@orpc/react": "next",
+    "@orpc/server": "next",
+    "@orpc/tanstack-query": "next",
+    "@orpc/zod": "next",
+    "@tanstack/react-query": "^5.83.0",
+    "@types/node": "^22.15.30",
+    "@types/react": "^19.1.9",
+    "@types/react-dom": "^19.1.7",
+    "next": "^15.4.5",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "server-only": "^0.0.1",
+    "typescript": "^5.8.3",
+    "zod": "^4.0.14"
+  }
+}

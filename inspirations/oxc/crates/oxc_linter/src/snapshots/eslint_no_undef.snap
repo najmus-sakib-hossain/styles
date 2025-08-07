@@ -1,0 +1,176 @@
+---
+source: crates/oxc_linter/src/tester.rs
+---
+  ⚠ eslint(no-undef): 'a' is not defined.
+   ╭─[no_undef.tsx:1:1]
+ 1 │ a = 1;
+   · ─
+   ╰────
+
+  ⚠ eslint(no-undef): 'b' is not defined.
+   ╭─[no_undef.tsx:1:9]
+ 1 │ var a = b;
+   ·         ─
+   ╰────
+
+  ⚠ eslint(no-undef): 'b' is not defined.
+   ╭─[no_undef.tsx:1:16]
+ 1 │ function f() { b; }
+   ·                ─
+   ╰────
+
+  ⚠ eslint(no-undef): 'window' is not defined.
+   ╭─[no_undef.tsx:1:1]
+ 1 │ window;
+   · ──────
+   ╰────
+
+  ⚠ eslint(no-undef): 'require' is not defined.
+   ╭─[no_undef.tsx:1:1]
+ 1 │ require("a");
+   · ───────
+   ╰────
+
+  ⚠ eslint(no-undef): 'a' is not defined.
+   ╭─[no_undef.tsx:1:36]
+ 1 │ var React; React.render(<img attr={a} />);
+   ·                                    ─
+   ╰────
+
+  ⚠ eslint(no-undef): 'a' is not defined.
+   ╭─[no_undef.tsx:1:41]
+ 1 │ var React, App; React.render(<App attr={a} />);
+   ·                                         ─
+   ╰────
+
+  ⚠ eslint(no-undef): 'a' is not defined.
+   ╭─[no_undef.tsx:1:2]
+ 1 │ [a] = [0];
+   ·  ─
+   ╰────
+
+  ⚠ eslint(no-undef): 'a' is not defined.
+   ╭─[no_undef.tsx:1:3]
+ 1 │ ({a} = {});
+   ·   ─
+   ╰────
+
+  ⚠ eslint(no-undef): 'a' is not defined.
+   ╭─[no_undef.tsx:1:6]
+ 1 │ ({b: a} = {});
+   ·      ─
+   ╰────
+
+  ⚠ eslint(no-undef): 'obj' is not defined.
+   ╭─[no_undef.tsx:1:2]
+ 1 │ [obj.a, obj.b] = [0, 1];
+   ·  ───
+   ╰────
+
+  ⚠ eslint(no-undef): 'obj' is not defined.
+   ╭─[no_undef.tsx:1:9]
+ 1 │ [obj.a, obj.b] = [0, 1];
+   ·         ───
+   ╰────
+
+  ⚠ eslint(no-undef): 'b' is not defined.
+   ╭─[no_undef.tsx:1:28]
+ 1 │ const c = 0; const a = {...b, c};
+   ·                            ─
+   ╰────
+
+  ⚠ eslint(no-undef): 'a' is not defined.
+   ╭─[no_undef.tsx:1:20]
+ 1 │ class C { static { a; } }
+   ·                    ─
+   ╰────
+
+  ⚠ eslint(no-undef): 'a' is not defined.
+   ╭─[no_undef.tsx:1:31]
+ 1 │ class C { static { { let a; } a; } }
+   ·                               ─
+   ╰────
+
+  ⚠ eslint(no-undef): 'a' is not defined.
+   ╭─[no_undef.tsx:1:40]
+ 1 │ class C { static { { function a() {} } a; } }
+   ·                                        ─
+   ╰────
+
+  ⚠ eslint(no-undef): 'a' is not defined.
+   ╭─[no_undef.tsx:1:47]
+ 1 │ class C { static { function foo() { var a; }  a; } }
+   ·                                               ─
+   ╰────
+
+  ⚠ eslint(no-undef): 'a' is not defined.
+   ╭─[no_undef.tsx:1:38]
+ 1 │ class C { static { var a; } static { a; } }
+   ·                                      ─
+   ╰────
+
+  ⚠ eslint(no-undef): 'a' is not defined.
+   ╭─[no_undef.tsx:1:38]
+ 1 │ class C { static { let a; } static { a; } }
+   ·                                      ─
+   ╰────
+
+  ⚠ eslint(no-undef): 'a' is not defined.
+   ╭─[no_undef.tsx:1:46]
+ 1 │ class C { static { function a(){} } static { a; } }
+   ·                                              ─
+   ╰────
+
+  ⚠ eslint(no-undef): 'a' is not defined.
+   ╭─[no_undef.tsx:1:37]
+ 1 │ class C { static { var a; } foo() { a; } }
+   ·                                     ─
+   ╰────
+
+  ⚠ eslint(no-undef): 'a' is not defined.
+   ╭─[no_undef.tsx:1:37]
+ 1 │ class C { static { let a; } foo() { a; } }
+   ·                                     ─
+   ╰────
+
+  ⚠ eslint(no-undef): 'a' is not defined.
+   ╭─[no_undef.tsx:1:30]
+ 1 │ class C { static { var a; } [a]; }
+   ·                              ─
+   ╰────
+
+  ⚠ eslint(no-undef): 'a' is not defined.
+   ╭─[no_undef.tsx:1:30]
+ 1 │ class C { static { let a; } [a]; }
+   ·                              ─
+   ╰────
+
+  ⚠ eslint(no-undef): 'a' is not defined.
+   ╭─[no_undef.tsx:1:39]
+ 1 │ class C { static { function a() {} } [a]; }
+   ·                                       ─
+   ╰────
+
+  ⚠ eslint(no-undef): 'a' is not defined.
+   ╭─[no_undef.tsx:1:31]
+ 1 │ class C { static { var a; } } a;
+   ·                               ─
+   ╰────
+
+  ⚠ eslint(no-undef): 'toString' is not defined.
+   ╭─[no_undef.tsx:1:1]
+ 1 │ toString()
+   · ────────
+   ╰────
+
+  ⚠ eslint(no-undef): 'hasOwnProperty' is not defined.
+   ╭─[no_undef.tsx:1:1]
+ 1 │ hasOwnProperty()
+   · ──────────────
+   ╰────
+
+  ⚠ eslint(no-undef): 'r' is not defined.
+   ╭─[no_undef.tsx:1:49]
+ 1 │ export class Foo{ bar: notDefined; }; const t = r + 1;
+   ·                                                 ─
+   ╰────

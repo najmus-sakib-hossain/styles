@@ -1,0 +1,80 @@
+[package]
+name = "oxc_linter"
+version = "1.10.0"
+authors.workspace = true
+categories.workspace = true
+edition.workspace = true
+homepage.workspace = true
+include = ["/examples", "/src"]
+keywords.workspace = true
+license.workspace = true
+publish = false
+repository.workspace = true
+rust-version.workspace = true
+description.workspace = true
+
+[features]
+default = []
+ruledocs = ["oxc_macros/ruledocs"] # Enables the `ruledocs` feature for conditional compilation
+language_server = ["oxc_data_structures/rope"] # For the Runtime to support needed information for the language server
+oxlint2 = ["dep:oxc_ast_macros", "tokio/rt-multi-thread"]
+disable_oxlint2 = []
+force_test_reporter = []
+
+[lints]
+workspace = true
+
+[lib]
+doctest = true
+
+[dependencies]
+oxc_allocator = { workspace = true }
+oxc_ast = { workspace = true }
+oxc_ast_macros = { workspace = true, optional = true }
+oxc_ast_visit = { workspace = true }
+oxc_cfg = { workspace = true }
+oxc_codegen = { workspace = true }
+oxc_data_structures = { workspace = true, optional = true }
+oxc_diagnostics = { workspace = true }
+oxc_ecmascript = { workspace = true }
+oxc_index = { workspace = true, features = ["serde"] }
+oxc_macros = { workspace = true, features = ["ruledocs"] }
+oxc_parser = { workspace = true }
+oxc_regular_expression = { workspace = true }
+oxc_resolver = { workspace = true }
+oxc_semantic = { workspace = true }
+oxc_span = { workspace = true, features = ["schemars", "serialize"] }
+oxc_syntax = { workspace = true, features = ["serialize"] }
+
+#
+bitflags = { workspace = true }
+constcat = { workspace = true }
+convert_case = { workspace = true }
+cow-utils = { workspace = true }
+fast-glob = { workspace = true }
+globset = { workspace = true }
+icu_segmenter = { workspace = true }
+indexmap = { workspace = true, features = ["rayon"] }
+itertools = { workspace = true }
+javascript-globals = { workspace = true }
+json-strip-comments = { workspace = true }
+language-tags = { workspace = true }
+lazy-regex = { workspace = true }
+memchr = { workspace = true }
+nonmax = { workspace = true }
+phf = { workspace = true, features = ["macros"] }
+rayon = { workspace = true }
+rust-lapper = { workspace = true }
+rustc-hash = { workspace = true }
+schemars = { workspace = true, features = ["indexmap2"] }
+self_cell = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+simdutf8 = { workspace = true }
+smallvec = { workspace = true }
+tokio = { workspace = true, optional = true }
+
+[dev-dependencies]
+insta = { workspace = true }
+markdown = { workspace = true }
+project-root = { workspace = true }

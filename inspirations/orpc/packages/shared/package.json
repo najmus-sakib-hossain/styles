@@ -1,0 +1,45 @@
+{
+  "name": "@orpc/shared",
+  "type": "module",
+  "version": "1.7.10",
+  "license": "MIT",
+  "homepage": "https://orpc.unnoq.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/unnoq/orpc.git",
+    "directory": "packages/shared"
+  },
+  "keywords": [
+    "unnoq",
+    "orpc"
+  ],
+  "publishConfig": {
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.mts",
+        "import": "./dist/index.mjs",
+        "default": "./dist/index.mjs"
+      }
+    }
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "unbuild",
+    "build:watch": "pnpm run build --watch",
+    "type:check": "tsc -b"
+  },
+  "dependencies": {
+    "radash": "^12.1.1",
+    "type-fest": "^4.39.1"
+  },
+  "devDependencies": {
+    "arktype": "2.1.20",
+    "valibot": "^1.1.0",
+    "zod": "^4.0.14"
+  }
+}

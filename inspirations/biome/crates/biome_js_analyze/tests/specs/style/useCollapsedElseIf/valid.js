@@ -1,0 +1,23 @@
+/* should not generate diagnostics */
+if (condition) {
+	// ...
+} else if (anotherCondition) {
+	// ...
+}
+
+if (condition) {
+	// ...
+} else if (anotherCondition) {
+	// ...
+} else {
+	// ...
+}
+
+if (condition) {
+	// ...
+} else {
+	if (anotherCondition) {
+		// ...
+	}
+	doSomething();
+}

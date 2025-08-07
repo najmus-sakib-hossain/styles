@@ -1,0 +1,38 @@
+{
+  "name": "@orpc/electron-playground",
+  "version": "1.7.10",
+  "main": "./out/main/index.js",
+  "scripts": {
+    "setup": "electron-builder install-app-deps",
+    "type:check": "tsc -b",
+    "start": "pnpm run setup && electron-vite preview",
+    "dev": "pnpm run setup && electron-vite dev",
+    "build": "pnpm run setup && electron-vite build",
+    "build:unpack": "pnpm run build && electron-builder --dir",
+    "build:win": "pnpm run build && electron-builder --win",
+    "build:mac": "electron-vite build && electron-builder --mac",
+    "build:linux": "electron-vite build && electron-builder --linux"
+  },
+  "devDependencies": {
+    "@electron-toolkit/preload": "^3.0.2",
+    "@electron-toolkit/tsconfig": "^1.0.1",
+    "@electron-toolkit/utils": "^4.0.0",
+    "@orpc/client": "next",
+    "@orpc/server": "next",
+    "@orpc/tanstack-query": "next",
+    "@orpc/zod": "next",
+    "@tanstack/react-query": "^5.83.0",
+    "@types/node": "^22.15.30",
+    "@types/react": "^19.1.9",
+    "@types/react-dom": "^19.1.7",
+    "@vitejs/plugin-react": "^4.7.0",
+    "electron": "^37.2.4",
+    "electron-builder": "^26.0.12",
+    "electron-vite": "^4.0.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5",
+    "zod": "^4.0.14"
+  }
+}

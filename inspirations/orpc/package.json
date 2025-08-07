@@ -1,0 +1,72 @@
+{
+  "name": "@orpc/monorepo",
+  "type": "module",
+  "version": "1.7.10",
+  "private": true,
+  "packageManager": "pnpm@10.13.1",
+  "scripts": {
+    "prepare": "simple-git-hooks",
+    "build": "pnpm run -r build",
+    "build:packages": "pnpm --filter=\"./packages/*\" run -r build",
+    "preview": "pnpm run --parallel preview",
+    "type:check": "pnpm run -r type:check && pnpm run -r type:check:test && tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest watch",
+    "test:coverage": "vitest run --coverage --coverage.include='packages/*/src/**'",
+    "test:ui": "vitest --ui --coverage --coverage.include='packages/*/src/**'",
+    "lint": "eslint --max-warnings=0 .",
+    "lint:fix": "pnpm run lint --fix",
+    "sherif": "sherif",
+    "sherif:fix": "pnpm run sherif --fix",
+    "knip": "knip --production",
+    "knip:fix": "pnpm run knip --fix --allow-remove-files",
+    "packages:bump": "bumpp -r",
+    "packages:publish": "pnpm run build:packages && pnpm --filter='./packages/*' publish -r --access=public",
+    "packages:publish:commit": "pnpm run build:packages && pkg-pr-new publish './packages/*' --pnpm --compact --template './playgrounds/*'",
+    "packages:changelog:github": "changelogithub --draft"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "^5.1.0",
+    "@solidjs/testing-library": "^0.8.10",
+    "@sveltejs/vite-plugin-svelte": "^6.1.0",
+    "@testing-library/jest-dom": "^6.6.4",
+    "@testing-library/react": "^16.0.1",
+    "@testing-library/svelte": "^5.2.7",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^22.15.30",
+    "@vitest/coverage-v8": "^3.2.4",
+    "@vitest/ui": "^3.2.4",
+    "@vue/test-utils": "^2.4.6",
+    "better-sqlite3": "^12.2.0",
+    "bumpp": "^10.2.1",
+    "changelogithub": "^13.16.0",
+    "eslint": "^9.32.0",
+    "eslint-plugin-ban": "^2.0.0",
+    "eslint-plugin-format": "^1.0.0",
+    "jsdom": "^26.0.0",
+    "knip": "^5.62.0",
+    "lint-staged": "^16.1.2",
+    "msw": "^2.10.4",
+    "pkg-pr-new": "^0.0.54",
+    "sherif": "^1.6.1",
+    "simple-git-hooks": "^2.11.1",
+    "typescript": "^5.8.3",
+    "unbuild": "^3.6.0",
+    "vite-plugin-solid": "^2.11.8",
+    "vitest": "^3.2.4"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "better-sqlite3",
+      "electron",
+      "esbuild"
+    ]
+  },
+  "simple-git-hooks": {
+    "pre-commit": "pnpm lint-staged"
+  },
+  "lint-staged": {
+    "*": "eslint --no-warn-ignored --max-warnings=0 --fix"
+  }
+}

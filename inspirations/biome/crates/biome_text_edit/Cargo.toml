@@ -1,0 +1,24 @@
+[package]
+authors.workspace    = true
+categories.workspace = true
+description          = "Utilities to edit text (This is taken from rust-analyzer)"
+edition.workspace    = true
+homepage.workspace   = true
+keywords.workspace   = true
+license.workspace    = true
+name                 = "biome_text_edit"
+repository.workspace = true
+version              = "0.5.7"
+
+[dependencies]
+biome_text_size = { workspace = true }
+schemars        = { workspace = true, optional = true }
+serde           = { workspace = true, features = ["derive"], optional = true }
+similar         = { workspace = true, features = ["unicode"] }
+
+[features]
+schema = ["dep:schemars", "biome_text_size/schema", "serde"]
+serde  = ["dep:serde", "biome_text_size/serde"]
+
+[lints]
+workspace = true

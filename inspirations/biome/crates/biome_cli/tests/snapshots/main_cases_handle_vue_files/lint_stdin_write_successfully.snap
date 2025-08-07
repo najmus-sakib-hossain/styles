@@ -1,0 +1,28 @@
+---
+source: crates/biome_cli/tests/snap_test.rs
+expression: content
+snapshot_kind: text
+---
+# Input messages
+
+```block
+<script setup lang="ts">
+a == b;
+delete a.c;
+
+var foo: string = "";
+</script>
+<template></template>
+```
+
+# Emitted Messages
+
+```block
+<script setup lang="ts">
+a == b;
+delete a.c;
+
+var foo: string = "";
+</script>
+<template></template>
+```

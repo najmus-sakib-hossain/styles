@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.lib.json",
+  "references": [
+    { "path": "../shared" },
+    { "path": "../standard-server" },
+    { "path": "../standard-server-fetch" },
+    { "path": "../standard-server-peer" }
+  ],
+  "include": ["src"],
+  "exclude": [
+    "**/*.test.*",
+    "**/*.bench.*",
+    "**/*.test-d.ts",
+    "**/__tests__/**",
+    "**/__mocks__/**",
+    "**/__snapshots__/**"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "name": "migrate-to-v0.31.0",
+  "license": "MIT",
+  "author": "Codemod, Inc.",
+  "type": "module",
+  "files": [
+    "README.md",
+    ".codemodrc.json",
+    "./dist/index.cjs"
+  ],
+  "devDependencies": {
+    "@codemod.com/workflow": "^0.0.31",
+    "@types/node": "^22.13.5",
+    "typescript": "^5.7.3"
+  }
+}

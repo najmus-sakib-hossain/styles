@@ -1,0 +1,57 @@
+{
+  "name": "@orpc/zod",
+  "type": "module",
+  "version": "1.7.10",
+  "license": "MIT",
+  "homepage": "https://orpc.unnoq.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/unnoq/orpc.git",
+    "directory": "packages/zod"
+  },
+  "keywords": [
+    "unnoq",
+    "orpc"
+  ],
+  "publishConfig": {
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.mts",
+        "import": "./dist/index.mjs",
+        "default": "./dist/index.mjs"
+      },
+      "./zod4": {
+        "types": "./dist/zod4/index.d.mts",
+        "import": "./dist/zod4/index.mjs",
+        "default": "./dist/zod4/index.mjs"
+      }
+    }
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./zod4": "./src/zod4/index.ts"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "unbuild",
+    "build:watch": "pnpm run build --watch",
+    "type:check": "tsc -b"
+  },
+  "peerDependencies": {
+    "@orpc/contract": "workspace:*",
+    "@orpc/server": "workspace:*",
+    "zod": ">=3.25.0"
+  },
+  "dependencies": {
+    "@orpc/json-schema": "workspace:*",
+    "@orpc/openapi": "workspace:*",
+    "@orpc/shared": "workspace:*",
+    "escape-string-regexp": "^5.0.0",
+    "wildcard-match": "^5.1.3"
+  },
+  "devDependencies": {
+    "zod": "^4.0.14"
+  }
+}

@@ -1,0 +1,24 @@
+{
+    "$schema": "../../../../../../packages/@biomejs/biome/configuration_schema.json",
+    "linter": {
+        "rules": {
+            "correctness": {
+                "useExhaustiveDependencies": {
+                    "level": "error",
+                    "options": {
+                        "hooks": [
+                            {
+                                "name": "useMyEffect",
+                                "closureIndex": 0,
+                                "dependenciesIndex": 0,
+                                "stableResult": [
+                                    -1
+                                ]
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    }
+}

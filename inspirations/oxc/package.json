@@ -1,0 +1,20 @@
+{
+  "name": "oxc",
+  "private": true,
+  "packageManager": "pnpm@10.14.0",
+  "volta": {
+    "node": "22.14.0"
+  },
+  "scripts": {
+    "build": "pnpm --workspace-concurrency=1 --filter './napi/*' build",
+    "build-dev": "pnpm --workspace-concurrency=1 --filter './napi/*' build-dev",
+    "build-test": "pnpm --workspace-concurrency=1 --filter './napi/*' build-test",
+    "test": "pnpm --workspace-concurrency=1 --filter './napi/*' test"
+  },
+  "devDependencies": {
+    "@napi-rs/cli": "catalog:",
+    "emnapi": "1.4.5",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

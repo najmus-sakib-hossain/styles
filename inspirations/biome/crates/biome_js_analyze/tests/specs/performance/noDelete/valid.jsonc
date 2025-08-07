@@ -1,0 +1,9 @@
+[
+	"delete a[x];",
+	"delete a['k' + 'ey'];",
+	"delete a.b[x];",
+	// uncovered by this rule
+	"delete x",
+	"delete f()",
+	"delete el.dataset.something"
+]

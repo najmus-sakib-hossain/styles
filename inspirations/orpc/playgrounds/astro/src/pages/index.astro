@@ -1,0 +1,15 @@
+---
+import { CreatePlanetMutationForm } from "../components/orpc-mutation";
+import { ListPlanetsQuery } from "../components/orpc-query";
+---
+
+<div>
+    <h1>ORPC Playground</h1>
+    You can visit the
+    <a href="/api">Scalar API Reference</a>
+    page.
+    <hr />
+    <CreatePlanetMutationForm client:only />
+    <hr />
+    <ListPlanetsQuery client:only />
+</div>

@@ -1,0 +1,22 @@
+name: Close issues
+
+on:
+  schedule:
+    - cron: "0 0 * * *"
+
+
+permissions:
+  issues: write
+
+jobs:
+  close-issues:
+    if: github.repository == 'biomejs/biome'
+    runs-on: depot-ubuntu-24.04-arm-small
+    steps:
+      - name: Close issue without reproduction
+        uses: actions-cool/issues-helper@50068f49b7b2b3857270ead65e2d02e4459b022c # v3.6.2
+        with:
+          actions: "close-issues"
+          token: ${{ secrets.GITHUB_TOKEN }}
+          labels: "S-Needs repro"
+          inactive-day: 3

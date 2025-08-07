@@ -1,0 +1,66 @@
+---
+source: crates/oxc_semantic/tests/main.rs
+input_file: crates/oxc_semantic/tests/fixtures/typescript-eslint/decorators/class-deco-with-object-param.ts
+---
+[
+  {
+    "children": [
+      {
+        "children": [
+          {
+            "children": [],
+            "flags": "ScopeFlags(StrictMode)",
+            "id": 2,
+            "node": "TSFunctionType",
+            "symbols": []
+          }
+        ],
+        "flags": "ScopeFlags(StrictMode | Function)",
+        "id": 1,
+        "node": "Function(deco)",
+        "symbols": [
+          {
+            "flags": "SymbolFlags(FunctionScopedVariable)",
+            "id": 1,
+            "name": "param",
+            "node": "BindingRestElement",
+            "references": []
+          }
+        ]
+      },
+      {
+        "children": [],
+        "flags": "ScopeFlags(StrictMode)",
+        "id": 3,
+        "node": "Class(Foo)",
+        "symbols": []
+      }
+    ],
+    "flags": "ScopeFlags(StrictMode | Top)",
+    "id": 0,
+    "node": "Program",
+    "symbols": [
+      {
+        "flags": "SymbolFlags(Function | Ambient)",
+        "id": 0,
+        "name": "deco",
+        "node": "Function(deco)",
+        "references": [
+          {
+            "flags": "ReferenceFlags(Read)",
+            "id": 0,
+            "name": "deco",
+            "node_id": 20
+          }
+        ]
+      },
+      {
+        "flags": "SymbolFlags(Class)",
+        "id": 2,
+        "name": "Foo",
+        "node": "Class(Foo)",
+        "references": []
+      }
+    ]
+  }
+]

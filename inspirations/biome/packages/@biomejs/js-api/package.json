@@ -1,0 +1,94 @@
+{
+  "name": "@biomejs/js-api",
+  "version": "2.0.3",
+  "description": "JavaScript APIs for the Biome package",
+  "scripts": {
+    "tsc": "tsc --noEmit",
+    "format": "cargo biome-cli-dev format --write .",
+    "ci": "cargo biome-cli-dev ci ./src && tsc --noEmit",
+    "check": "pnpm biome:check && tsc --noEmit",
+    "biome:check": "cargo biome-cli-dev check .",
+    "check:apply": "cargo biome-cli-dev check --apply-unsafe .",
+    "build:wasm-dev": "pnpm run \"/^build:wasm-.+-dev$/\"",
+    "build:wasm": "pnpm run \"/^build:wasm-.+(?<!dev)$/\"",
+    "build:wasm-bundler-dev": "wasm-pack build --out-dir ../../packages/@biomejs/wasm-bundler --target bundler --dev --scope biomejs ../../../crates/biome_wasm",
+    "build:wasm-bundler": "wasm-pack build --out-dir ../../packages/@biomejs/wasm-bundler --target bundler --release --scope biomejs ../../../crates/biome_wasm",
+    "build:wasm-node-dev": "wasm-pack build --out-dir ../../packages/@biomejs/wasm-nodejs --target nodejs --dev --scope biomejs ../../../crates/biome_wasm",
+    "build:wasm-node": "wasm-pack build --out-dir ../../packages/@biomejs/wasm-nodejs --target nodejs --release --scope biomejs ../../../crates/biome_wasm",
+    "build:wasm-web-dev": "wasm-pack build --out-dir ../../packages/@biomejs/wasm-web --target web --dev --scope biomejs ../../../crates/biome_wasm",
+    "build:wasm-web": "wasm-pack build --out-dir ../../packages/@biomejs/wasm-web --target web --release --scope biomejs ../../../crates/biome_wasm",
+    "test": "vitest",
+    "test:ci": "vitest run",
+    "build": "tsc"
+  },
+  "files": [
+    "README.md",
+    "LICENSE-APACHE",
+    "LICENSE-MIT",
+    "ROME-LICENSE-MIT",
+    "dist/"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./bundler": {
+      "types": "./dist/bundler.d.ts",
+      "default": "./dist/bundler.js"
+    },
+    "./nodejs": {
+      "types": "./dist/nodejs.d.ts",
+      "default": "./dist/nodejs.js"
+    },
+    "./web": {
+      "types": "./dist/web.d.ts",
+      "default": "./dist/web.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "keywords": [
+    "JavaScript",
+    "bindings",
+    "APIs",
+    "biome"
+  ],
+  "license": "MIT OR Apache-2.0",
+  "homepage": "https://biomejs.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/biomejs/biome.git",
+    "directory": "packages/@biomejs/js-api"
+  },
+  "author": "Biome Developers and Contributors",
+  "bugs": "https://github.com/biomejs/biome/issues",
+  "devDependencies": {
+    "@biomejs/wasm-bundler": "workspace:*",
+    "@biomejs/wasm-nodejs": "workspace:*",
+    "@biomejs/wasm-web": "workspace:*",
+    "typescript": "5.9.2",
+    "vite": "7.0.6",
+    "vitest": "3.2.4"
+  },
+  "peerDependencies": {
+    "@biomejs/wasm-bundler": "^2.1.3",
+    "@biomejs/wasm-nodejs": "^2.1.3",
+    "@biomejs/wasm-web": "^2.1.3"
+  },
+  "peerDependenciesMeta": {
+    "@biomejs/wasm-bundler": {
+      "optional": true
+    },
+    "@biomejs/wasm-nodejs": {
+      "optional": true
+    },
+    "@biomejs/wasm-web": {
+      "optional": true
+    }
+  },
+  "publishConfig": {
+    "provenance": true
+  }
+}

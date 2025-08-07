@@ -1,0 +1,114 @@
+---
+source: crates/oxc_semantic/tests/integration/cfg.rs
+expression: snapshot
+input_file: crates/oxc_semantic/tests/integration/cfg_fixtures/if_else.js
+---
+bb0: {
+
+}
+
+bb1: {
+
+}
+
+bb2: {
+
+}
+
+bb3: {
+	statement
+}
+
+bb4: {
+	condition
+}
+
+bb5: {
+
+}
+
+bb6: {
+
+}
+
+bb7: {
+	statement
+	return <value>
+}
+
+bb8: {
+	unreachable
+}
+
+bb9: {
+	statement
+	return <value>
+}
+
+bb10: {
+	unreachable
+}
+
+bb11: {
+	return <value>
+}
+
+bb12: {
+	unreachable
+}
+
+bb13: {
+
+}
+
+digraph {
+    0 [ label = "bb0" shape = box]
+    1 [ label = "bb1" shape = box]
+    2 [ label = "bb2" shape = box]
+    3 [ label = "bb3
+IfStatement" shape = box]
+    4 [ label = "bb4
+Condition(LogicalExpression)" shape = box]
+    5 [ label = "bb5" shape = box]
+    6 [ label = "bb6" shape = box]
+    7 [ label = "bb7
+BlockStatement
+return <value>" shape = box]
+    8 [ label = "bb8
+unreachable" shape = box]
+    9 [ label = "bb9
+BlockStatement
+return <value>" shape = box]
+    10 [ label = "bb10
+unreachable" shape = box]
+    11 [ label = "bb11
+return <value>" shape = box]
+    12 [ label = "bb12
+unreachable" shape = box]
+    13 [ label = "bb13" shape = box]
+    1 -> 0 [ label="Error(Implicit)", color=red, style=dashed]
+    3 -> 2 [ label="Error(Implicit)", color=red, style=dashed]
+    1 -> 3 [ label="NewFunction"]
+    4 -> 2 [ label="Error(Implicit)", color=red, style=dashed]
+    5 -> 2 [ label="Error(Implicit)", color=red, style=dashed]
+    6 -> 2 [ label="Error(Implicit)", color=red, style=dashed]
+    4 -> 5 [ label="Normal"]
+    4 -> 6 [ label="Normal"]
+    5 -> 6 [ label="Normal"]
+    7 -> 2 [ label="Error(Implicit)", color=red, style=dashed]
+    8 -> 2 [ label="Error(Implicit)", style=dashed, color=red]
+    7 -> 8 [ label="Unreachable", style="dotted"]
+    9 -> 2 [ label="Error(Implicit)", color=red, style=dashed]
+    10 -> 2 [ label="Error(Implicit)", style=dashed, color=red]
+    9 -> 10 [ label="Unreachable", style="dotted"]
+    11 -> 2 [ label="Error(Implicit)", style=dashed, color=red]
+    3 -> 4 [ label="Normal"]
+    6 -> 7 [ label="Jump", color=green]
+    8 -> 11 [ label="Normal", style="dotted"]
+    6 -> 9 [ label="Jump", color=green]
+    10 -> 11 [ label="Normal", style="dotted"]
+    12 -> 2 [ label="Error(Implicit)", style=dashed, color=red]
+    11 -> 12 [ label="Unreachable", style="dotted"]
+    13 -> 0 [ label="Error(Implicit)", color=red, style=dashed]
+    1 -> 13 [ label="Normal"]
+}

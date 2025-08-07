@@ -1,0 +1,88 @@
+---
+source: crates/biome_formatter_test/src/snapshot_builder.rs
+info: js/module/binding/object_binding.js
+---
+# Input
+
+```js
+let {a}=b
+let {d,b:c}=d
+let {x,y=c,z:pp=f,...g}=h
+let {aaaaaaaaaaaaaaaaaaaa,bbbbbbbbbbbbbbbbbbbb=cccccccccccccccccccc,dddddddddddddddddddd:eeeeeeeeeeeeeeeeeeee=ffffffffffffffffffff,...gggggggggggggggggggg}=h
+let {looooooooooooooooooooooooooooooooooooooooooong: loooooooooooooooooooooooooooooooooooooooooong }=h
+```
+
+
+=============================
+
+# Outputs
+
+## Output 1
+
+-----
+Indent style: Tab
+Indent width: 2
+Line ending: LF
+Line width: 80
+Quote style: Double Quotes
+JSX quote style: Double Quotes
+Quote properties: As needed
+Trailing commas: All
+Semicolons: Always
+Arrow parentheses: Always
+Bracket spacing: true
+Bracket same line: false
+Attribute Position: Auto
+Expand lists: Auto
+-----
+
+```js
+let { a } = b;
+let { d, b: c } = d;
+let { x, y = c, z: pp = f, ...g } = h;
+let {
+	aaaaaaaaaaaaaaaaaaaa,
+	bbbbbbbbbbbbbbbbbbbb = cccccccccccccccccccc,
+	dddddddddddddddddddd: eeeeeeeeeeeeeeeeeeee = ffffffffffffffffffff,
+	...gggggggggggggggggggg
+} = h;
+let {
+	looooooooooooooooooooooooooooooooooooooooooong:
+		loooooooooooooooooooooooooooooooooooooooooong,
+} = h;
+```
+
+## Output 1
+
+-----
+Indent style: Tab
+Indent width: 2
+Line ending: LF
+Line width: 80
+Quote style: Double Quotes
+JSX quote style: Double Quotes
+Quote properties: As needed
+Trailing commas: All
+Semicolons: Always
+Arrow parentheses: Always
+Bracket spacing: false
+Bracket same line: false
+Attribute Position: Auto
+Expand lists: Auto
+-----
+
+```js
+let {a} = b;
+let {d, b: c} = d;
+let {x, y = c, z: pp = f, ...g} = h;
+let {
+	aaaaaaaaaaaaaaaaaaaa,
+	bbbbbbbbbbbbbbbbbbbb = cccccccccccccccccccc,
+	dddddddddddddddddddd: eeeeeeeeeeeeeeeeeeee = ffffffffffffffffffff,
+	...gggggggggggggggggggg
+} = h;
+let {
+	looooooooooooooooooooooooooooooooooooooooooong:
+		loooooooooooooooooooooooooooooooooooooooooong,
+} = h;
+```

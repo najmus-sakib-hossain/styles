@@ -1,0 +1,548 @@
+parser_misc Summary:
+AST Parsed     : 45/45 (100.00%)
+Positive Passed: 45/45 (100.00%)
+Negative Passed: 54/54 (100.00%)
+
+  × Cannot assign to 'arguments' in strict mode
+   ╭─[misc/fail/arguments-eval.ts:1:10]
+ 1 │ function arguments() {}
+   ·          ─────────
+ 2 │ function eval() {}
+   ╰────
+
+  × Cannot assign to 'eval' in strict mode
+   ╭─[misc/fail/arguments-eval.ts:2:10]
+ 1 │ function arguments() {}
+ 2 │ function eval() {}
+   ·          ────
+ 3 │ 
+   ╰────
+
+  × Cannot assign to 'arguments' in strict mode
+   ╭─[misc/fail/arguments-eval.ts:4:16]
+ 3 │ 
+ 4 │ function foo({ arguments }) {}
+   ·                ─────────
+ 5 │ function foo2([arguments]) {}
+   ╰────
+
+  × Cannot assign to 'arguments' in strict mode
+   ╭─[misc/fail/arguments-eval.ts:5:16]
+ 4 │ function foo({ arguments }) {}
+ 5 │ function foo2([arguments]) {}
+   ·                ─────────
+ 6 │ function foo3({ eval }) {}
+   ╰────
+
+  × Cannot assign to 'eval' in strict mode
+   ╭─[misc/fail/arguments-eval.ts:6:17]
+ 5 │ function foo2([arguments]) {}
+ 6 │ function foo3({ eval }) {}
+   ·                 ────
+ 7 │ function foo4([eval]) {}
+   ╰────
+
+  × Cannot assign to 'eval' in strict mode
+   ╭─[misc/fail/arguments-eval.ts:7:16]
+ 6 │ function foo3({ eval }) {}
+ 7 │ function foo4([eval]) {}
+   ·                ────
+ 8 │ 
+   ╰────
+
+  × Identifier `b` has already been declared
+   ╭─[misc/fail/oxc-10159.js:1:22]
+ 1 │ function a() { class b { }; function b() { } }
+   ·                      ┬               ┬
+   ·                      │               ╰── It can not be redeclared here
+   ·                      ╰── `b` has already been declared here
+   ╰────
+
+  × Unexpected token
+   ╭─[misc/fail/oxc-10638.js:2:1]
+ 1 │ for(
+ 2 │ in
+   · ──
+   ╰────
+
+  × Unexpected token
+   ╭─[misc/fail/oxc-10639.js:1:1]
+ 1 │ <<Ç
+   · ──
+   ╰────
+
+  × Unexpected token
+   ╭─[misc/fail/oxc-10977.ts:1:9]
+ 1 │ class{h:<=Ö
+   ·         ──
+   ╰────
+
+  × Expected `from` but found `EOF`
+   ╭─[misc/fail/oxc-11453.js:2:1]
+ 1 │ export import
+   ╰────
+
+  × Decorators may not appear after 'export' or 'export default' if they also appear before 'export'.
+   ╭─[misc/fail/oxc-11472.js:1:14]
+ 1 │ @dec1 export @dec2 class C {}
+   ·              ─────
+ 2 │ 
+   ╰────
+
+  × Decorators may not appear after 'export' or 'export default' if they also appear before 'export'.
+   ╭─[misc/fail/oxc-11472.js:3:22]
+ 2 │ 
+ 3 │ @dec1 export default @dec2 class {}
+   ·                      ─────
+   ╰────
+
+  × Expected `from` but found `EOF`
+   ╭─[misc/fail/oxc-11484.ts:2:1]
+ 1 │ import { type as as }
+   ╰────
+
+  × Decorators are not valid here.
+   ╭─[misc/fail/oxc-11485.js:2:10]
+ 1 │ class C {
+ 2 │   method(@foo x) {}
+   ·          ────
+ 3 │ }
+   ╰────
+
+  × Decorators are not valid here.
+   ╭─[misc/fail/oxc-11485.ts:2:10]
+ 1 │ var obj = {
+ 2 │   method(@foo x) {},
+   ·          ────
+ 3 │ };
+   ╰────
+
+  × Decorators are not valid here.
+   ╭─[misc/fail/oxc-11485.ts:5:17]
+ 4 │ 
+ 5 │ function method(@foo x) {}
+   ·                 ────
+   ╰────
+
+  × Unexpected token
+   ╭─[misc/fail/oxc-11487.mjs:1:13]
+ 1 │ async await => {}
+   ·             ──
+   ╰────
+
+  × Expected `from` but found `{`
+   ╭─[misc/fail/oxc-11532.js:1:15]
+ 1 │ import source { x } from 'x';
+   ·               ┬
+   ·               ╰── `from` expected
+ 2 │ import defer { x } from "x";
+   ╰────
+
+  × Expected `}` but found `function`
+   ╭─[misc/fail/oxc-11538.js:1:20]
+ 1 │ const y = `foo ${x function() {} function () {}}`;
+   ·                    ────┬───
+   ·                        ╰── `}` expected
+   ╰────
+
+  × Unexpected token
+   ╭─[misc/fail/oxc-11592-1.ts:1:11]
+ 1 │ namespace "a" {}
+   ·           ───
+   ╰────
+
+  × Unexpected token
+   ╭─[misc/fail/oxc-11592-2.ts:1:11]
+ 1 │ namespace "a";
+   ·           ───
+ 2 │ 
+   ╰────
+
+  × Expected `{` but found `;`
+   ╭─[misc/fail/oxc-11592-3.ts:1:12]
+ 1 │ namespace a;
+   ·            ┬
+   ·            ╰── `{` expected
+   ╰────
+
+  × TS(1098): Type parameter list cannot be empty.
+   ╭─[misc/fail/oxc-11789-1.ts:1:12]
+ 1 │ interface i<>implements 
+   ·            ──
+   ╰────
+
+  × Unexpected token
+   ╭─[misc/fail/oxc-11789-1.ts:1:25]
+ 1 │ interface i<>implements 
+   ╰────
+
+  × TS(1098): Type parameter list cannot be empty.
+   ╭─[misc/fail/oxc-11789-2.ts:1:12]
+ 1 │ interface i<>implements K {}
+   ·            ──
+   ╰────
+
+  × TS(1176): Interface declaration cannot have 'implements' clause.
+   ╭─[misc/fail/oxc-11789-2.ts:1:14]
+ 1 │ interface i<>implements K {}
+   ·              ──────────
+   ╰────
+
+  × Unterminated regular expression
+   ╭─[misc/fail/oxc-12546-1.ts:1:25]
+ 1 │ interface Props extends /MenuProps {
+   ·                         ─────────────
+ 2 │   collapse?: boolean;
+ 3 │   menus: MenuRecordRaw[];
+   ╰────
+
+  × Unterminated regular expression
+   ╭─[misc/fail/oxc-12546-2.ts:1:21]
+ 1 │ class Props extends /MenuProps {
+   ·                     ─────────────
+ 2 │ }
+   ╰────
+
+  × Cannot assign to this expression
+   ╭─[misc/fail/oxc-12612-1.ts:1:2]
+ 1 │ (foo() as bar) = 123;
+   ·  ────────────
+   ╰────
+
+  × Cannot assign to this expression
+   ╭─[misc/fail/oxc-12612-2.ts:1:2]
+ 1 │ (<any>foo()) = 123;
+   ·  ──────────
+   ╰────
+
+  × Cannot assign to this expression
+   ╭─[misc/fail/oxc-12612-3.ts:1:2]
+ 1 │ (foo() satisfies any) = 123;
+   ·  ───────────────────
+   ╰────
+
+  × Cannot assign to this expression
+   ╭─[misc/fail/oxc-12612-4.ts:1:2]
+ 1 │ (foo() as number as any) = 123;
+   ·  ──────────────────────
+   ╰────
+
+  × Unexpected token
+   ╭─[misc/fail/oxc-169.js:2:1]
+ 1 │ 1<(V=82<<t-j0<(V=$<LBI<(V=ut<I<(V=$<LBI<(V=uIV=82<<t-j0<(V=$<LBI<(V=ut<I<(V=$<LBI<(V<II>
+   ╰────
+
+  × Expected `(` but found `:`
+   ╭─[misc/fail/oxc-1942-1.ts:2:8]
+ 1 │ class Foo {
+ 2 │   get x: () => {
+   ·        ┬
+   ·        ╰── `(` expected
+ 3 │       return 5;
+   ╰────
+
+  × Expected `(` but found `:`
+   ╭─[misc/fail/oxc-1942-2.ts:2:8]
+ 1 │ class Foo {
+ 2 │   set x: (v: number) => {}
+   ·        ┬
+   ·        ╰── `(` expected
+ 3 │ }
+   ╰────
+
+  × A class name is required.
+   ╭─[misc/fail/oxc-2144.js:1:1]
+ 1 │ class {}
+   · ─────
+ 2 │ export class {}
+   ╰────
+
+  × A class name is required.
+   ╭─[misc/fail/oxc-2144.js:2:8]
+ 1 │ class {}
+ 2 │ export class {}
+   ·        ─────
+   ╰────
+
+  × Unexpected token
+   ╭─[misc/fail/oxc-2253.ts:1:8]
+ 1 │ const a? = "A"
+   ·        ─
+ 2 │ const [b]? = ["B"]
+   ╰────
+
+  × Unexpected token
+   ╭─[misc/fail/oxc-2253.ts:2:10]
+ 1 │ const a? = "A"
+ 2 │ const [b]? = ["B"]
+   ·          ─
+ 3 │ const { c }? = { c: "C" }
+   ╰────
+
+  × Unexpected token
+   ╭─[misc/fail/oxc-2253.ts:3:12]
+ 2 │ const [b]? = ["B"]
+ 3 │ const { c }? = { c: "C" }
+   ·            ─
+ 4 │ 
+   ╰────
+
+  × Unexpected token
+   ╭─[misc/fail/oxc-2253.ts:5:13]
+ 4 │ 
+ 5 │ const d     ? = "A"
+   ·             ─
+ 6 │ const [e, f]      ? = ["B"]
+   ╰────
+
+  × Unexpected token
+   ╭─[misc/fail/oxc-2253.ts:6:19]
+ 5 │ const d     ? = "A"
+ 6 │ const [e, f]      ? = ["B"]
+   ·                   ─
+ 7 │ const { g, h }       ? = { c: "C" }
+   ╰────
+
+  × Unexpected token
+   ╭─[misc/fail/oxc-2253.ts:7:22]
+ 6 │ const [e, f]      ? = ["B"]
+ 7 │ const { g, h }       ? = { c: "C" }
+   ·                      ─
+   ╰────
+
+  × Empty parenthesized expression
+   ╭─[misc/fail/oxc-232.js:1:5]
+ 1 │ x = (/* a */)
+   ·     ─────────
+   ╰────
+
+  × Expected `{` but found `[`
+    ╭─[misc/fail/oxc-2394.ts:38:21]
+ 37 │ export type LocalInterface =
+ 38 │     & import("pkg", [ {"resolution-mode": "require"} ]).RequireInterface
+    ·                     ┬
+    ·                     ╰── `{` expected
+ 39 │     & import("pkg", [ {"resolution-mode": "import"} ]).ImportInterface;
+    ╰────
+
+  × Expected `:` but found `[`
+   ╭─[misc/fail/oxc-3320.tsx:1:8]
+ 1 │ m< $<{3[   $<{3[  $<{3[ m< m$<{3[ m< mm< $<{3[   $<{3[  $<{3[ m< m$<{3[ m< m$<{3[  $<{3[ m< m$<{3[
+   ·        ┬
+   ·        ╰── `:` expected
+   ╰────
+
+  × Expected corresponding JSX closing tag for 'Apple'.
+   ╭─[misc/fail/oxc-3528.jsx:1:10]
+ 1 │ let a = <Apple></Banana>;
+   ·          ─────   ──────
+ 2 │ 
+   ╰────
+
+  × Expected corresponding JSX closing tag for 'Apple:Orange'.
+   ╭─[misc/fail/oxc-3528.jsx:3:10]
+ 2 │ 
+ 3 │ let b = <Apple:Orange></Banana>;
+   ·          ────────────   ──────
+ 4 │ 
+   ╰────
+
+  × Expected corresponding JSX closing tag for 'Apple.Orange'.
+   ╭─[misc/fail/oxc-3528.jsx:5:10]
+ 4 │ 
+ 5 │ let c = <Apple.Orange></Banana>;
+   ·          ────────────   ──────
+   ╰────
+
+  × 'readonly' modifier cannot be used here.
+   ╭─[misc/fail/oxc-3948.ts:2:5]
+ 1 │ const x = {
+ 2 │     readonly foo() {
+   ·     ────────
+ 3 │ 
+   ╰────
+
+  × 'public' modifier cannot be used here.
+   ╭─[misc/fail/oxc-3948.ts:5:5]
+ 4 │     },
+ 5 │     public readonly async bar() {
+   ·     ──────
+ 6 │ 
+   ╰────
+
+  × 'readonly' modifier cannot be used here.
+   ╭─[misc/fail/oxc-3948.ts:5:12]
+ 4 │     },
+ 5 │     public readonly async bar() {
+   ·            ────────
+ 6 │ 
+   ╰────
+
+  × 'public' modifier cannot be used here.
+   ╭─[misc/fail/oxc-3948.ts:8:5]
+ 7 │     },
+ 8 │     public x: 1,
+   ·     ──────
+ 9 │ }
+   ╰────
+
+  × TS(8037): Type assertion expressions can only be used in TypeScript files.
+   ╭─[misc/fail/oxc-4111-1.js:1:1]
+ 1 │ funtransientction as longciiConÞr>ol(cde) {
+   · ─────────────────────────────────
+   ╰────
+
+  × Expected a semicolon or an implicit semicolon after a statement, but found none
+   ╭─[misc/fail/oxc-4111-1.js:1:43]
+ 1 │ funtransientction as longciiConÞr>ol(cde) {
+   ·                                          ▲
+   ╰────
+  help: Try insert a semicolon here
+
+  × TS(1248): A class member cannot have the 'const' keyword.
+   ╭─[misc/fail/oxc-4212-1.ts:1:11]
+ 1 │ class a { const enum b(); }
+   ·           ─────
+   ╰────
+  help: Did you mean `readonly`?
+
+  × Expected `;` but found `Identifier`
+   ╭─[misc/fail/oxc-4212-1.ts:1:22]
+ 1 │ class a { const enum b(); }
+   ·                      ┬
+   ·                      ╰── `;` expected
+   ╰────
+
+  × TS(1164): Computed property names are not allowed in enums.
+   ╭─[misc/fail/oxc-4449-1.ts:1:11]
+ 1 │ enum A { [foo] } // Computed property names are not allowed in enums
+   ·           ───
+   ╰────
+
+  × TS(2452): An enum member cannot have a numeric name.
+   ╭─[misc/fail/oxc-4449-2.ts:1:11]
+ 1 │ enum B { [1] } // An enum member cannot have a numeric name.
+   ·           ─
+   ╰────
+
+  × TS(2452): An enum member cannot have a numeric name.
+   ╭─[misc/fail/oxc-4449-3.ts:1:10]
+ 1 │ enum C { 1 } // An enum member cannot have a numeric name.
+   ·          ─
+   ╰────
+
+  × TS(1164): Computed property names are not allowed in enums.
+   ╭─[misc/fail/oxc-4449-4.ts:1:11]
+ 1 │ enum D { [`test${foo}`] } // Computed property names are not allowed in enums.
+   ·           ────────────
+   ╰────
+
+  × TS(1164): Computed property names are not allowed in enums.
+   ╭─[misc/fail/oxc-4449-5.ts:1:10]
+ 1 │ enum E { `baz` = 2 } // Enum member expected.
+   ·          ─────
+   ╰────
+
+  × TS(1164): Computed property names are not allowed in enums.
+   ╭─[misc/fail/oxc-4449-6.ts:1:11]
+ 1 │ enum F { ['baz' + 'baz']  // Computed property names are not allowed in enums.
+   ·           ─────────────
+   ╰────
+
+  × Label `Test` has already been declared
+   ╭─[misc/fail/oxc-5036.js:1:1]
+ 1 │ Test: {
+   · ──┬─
+   ·   ╰── `Test` has already been declared here
+ 2 │     Test: console.log('Test');
+   ·     ──┬─
+   ·       ╰── It can not be redeclared here
+ 3 │ }
+   ╰────
+
+  × TS(1276): An 'accessor' property cannot be declared optional.
+   ╭─[misc/fail/oxc-5177.ts:4:15]
+ 3 │ export class Bang {
+ 4 │     accessor x?: Foo
+   ·               ─
+ 5 │ }
+   ╰────
+
+  × Unexpected token
+   ╭─[misc/fail/oxc-5355.jsx:1:6]
+ 1 │ <Foo.bar-baz />
+   ·      ───────
+   ╰────
+
+  × Unexpected token
+   ╭─[misc/fail/oxc-5955-1.ts:1:8]
+ 1 │ const x?: number = 1;
+   ·        ─
+ 2 │ 
+   ╰────
+
+  × Unexpected token
+   ╭─[misc/fail/oxc-5955-2.ts:3:8]
+ 2 │ interface B {
+ 3 │     e()?: number;
+   ·        ─
+ 4 │ }
+   ╰────
+
+  × TS(1021): An index signature must have a type annotation.
+   ╭─[misc/fail/oxc-5955-3.ts:2:5]
+ 1 │ class A {
+ 2 │     [key: string]?: number;
+   ·     ─────────────
+ 3 │ }
+   ╰────
+
+  × Private field 'x' must be declared in an enclosing class
+   ╭─[misc/fail/oxc-7582.js:4:9]
+ 3 │   method() {
+ 4 │     obj.#x;
+   ·         ──
+ 5 │   }
+   ╰────
+
+  × Unexpected token
+   ╭─[misc/fail/oxc-9497.js:2:8]
+ 1 │ let repro = {};
+ 2 │ repro.f?.
+   ·        ──
+   ╰────
+
+  × Unexpected token
+   ╭─[misc/fail/oxc-9525-1.js:1:2]
+ 1 │ x?.;
+   ·  ──
+   ╰────
+
+  × Unexpected token
+   ╭─[misc/fail/oxc-9525-2.js:1:3]
+ 1 │ [x?.];
+   ·   ──
+   ╰────
+
+  × Unexpected token
+   ╭─[misc/fail/oxc-9525-3.js:2:4]
+ 1 │ () => {
+ 2 │   x?.
+   ·    ──
+ 3 │ }
+   ╰────
+
+  × The keyword 'let' is reserved
+   ╭─[misc/fail/oxc.js:3:1]
+ 2 │ 
+ 3 │ let.a = 1;
+   · ───
+ 4 │ let()[a] = 1;
+   ╰────
+
+  × The keyword 'let' is reserved
+   ╭─[misc/fail/oxc.js:4:1]
+ 3 │ let.a = 1;
+ 4 │ let()[a] = 1;
+   · ───
+   ╰────

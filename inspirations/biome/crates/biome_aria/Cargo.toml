@@ -1,0 +1,19 @@
+[package]
+authors.workspace    = true
+categories.workspace = true
+description          = "Utilities to create ARIA query for biome_js_analyze"
+edition.workspace    = true
+homepage.workspace   = true
+keywords.workspace   = true
+license.workspace    = true
+name                 = "biome_aria"
+repository.workspace = true
+version              = "0.5.7"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+biome_aria_metadata = { workspace = true }
+
+[lints]
+workspace = true

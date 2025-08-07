@@ -1,0 +1,61 @@
+---
+source: crates/biome_formatter_test/src/snapshot_builder.rs
+info: ts/type/import_type.ts
+---
+# Input
+
+```ts
+type ImportType1 = typeof import('source');
+
+type ImportType2 = import('source');
+
+type QualifiedImportType = typeof import('source').Qualified<TypeParams>;
+
+type ActionLogsQ = import("longlonglonglonglonglonglonglongsource").QueryBuilder<"audit.action_logs">;
+
+type LongImportType = typeof import("./long/long/long/long/long/long/long/long/path/long/long/long/long/path").default
+```
+
+
+=============================
+
+# Outputs
+
+## Output 1
+
+-----
+Indent style: Tab
+Indent width: 2
+Line ending: LF
+Line width: 80
+Quote style: Double Quotes
+JSX quote style: Double Quotes
+Quote properties: As needed
+Trailing commas: All
+Semicolons: Always
+Arrow parentheses: Always
+Bracket spacing: true
+Bracket same line: false
+Attribute Position: Auto
+Expand lists: Auto
+-----
+
+```ts
+type ImportType1 = typeof import("source");
+
+type ImportType2 = import("source");
+
+type QualifiedImportType = typeof import("source").Qualified<TypeParams>;
+
+type ActionLogsQ =
+	import("longlonglonglonglonglonglonglongsource").QueryBuilder<"audit.action_logs">;
+
+type LongImportType =
+	typeof import("./long/long/long/long/long/long/long/long/path/long/long/long/long/path").default;
+```
+
+# Lines exceeding max width of 80 characters
+```
+    8: 	import("longlonglonglonglonglonglonglongsource").QueryBuilder<"audit.action_logs">;
+   11: 	typeof import("./long/long/long/long/long/long/long/long/path/long/long/long/long/path").default;
+```

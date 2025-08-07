@@ -1,0 +1,25 @@
+{
+  "name": "@orpc/solid-start-playground",
+  "type": "module",
+  "scripts": {
+    "dev": "vinxi dev",
+    "build": "vinxi build",
+    "start": "vinxi start",
+    "type:check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@orpc/client": "next",
+    "@orpc/json-schema": "next",
+    "@orpc/openapi": "next",
+    "@orpc/server": "next",
+    "@orpc/tanstack-query": "next",
+    "@orpc/zod": "next",
+    "@solidjs/router": "^0.15.3",
+    "@solidjs/start": "^1.1.7",
+    "@tanstack/solid-query": "^5.83.0",
+    "solid-js": "^1.9.5",
+    "vinxi": "^0.5.8",
+    "vite-plugin-top-level-await": "^1.6.0",
+    "zod": "^4.0.14"
+  }
+}

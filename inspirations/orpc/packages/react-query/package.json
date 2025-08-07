@@ -1,0 +1,53 @@
+{
+  "name": "@orpc/react-query",
+  "type": "module",
+  "version": "1.7.10",
+  "license": "MIT",
+  "homepage": "https://orpc.unnoq.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/unnoq/orpc.git",
+    "directory": "packages/react-query"
+  },
+  "keywords": [
+    "unnoq",
+    "orpc",
+    "react-query",
+    "tanstack query",
+    "react"
+  ],
+  "publishConfig": {
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.mts",
+        "import": "./dist/index.mjs",
+        "default": "./dist/index.mjs"
+      }
+    }
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "unbuild",
+    "build:watch": "pnpm run build --watch",
+    "type:check": "tsc -b"
+  },
+  "peerDependencies": {
+    "@orpc/client": "workspace:*",
+    "@tanstack/react-query": ">=5.80.2",
+    "react": ">=18.3.0"
+  },
+  "dependencies": {
+    "@orpc/shared": "workspace:*",
+    "@orpc/tanstack-query": "workspace:*"
+  },
+  "devDependencies": {
+    "@tanstack/react-query": "^5.83.0",
+    "react": "^19.1.1",
+    "zod": "^4.0.14"
+  }
+}

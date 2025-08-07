@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node", "vitest/globals"]
+  },
+  "references": [
+    { "path": "./packages/contract" },
+    { "path": "./packages/openapi" },
+    { "path": "./packages/server" },
+    { "path": "./packages/client" },
+    { "path": "./packages/react-query" },
+    { "path": "./packages/vue-query" },
+    { "path": "./packages/vue-colada" },
+    { "path": "./packages/zod" },
+    { "path": "./packages/standard-server" },
+    { "path": "./packages/standard-server-fetch" },
+    { "path": "./packages/standard-server-node" },
+    { "path": "./packages/standard-server-aws-lambda" },
+    { "path": "./packages/standard-server-peer" }
+  ],
+  "include": [
+    "playground",
+    "scripts",
+    "tests",
+    "*",
+
+    "*/*/src/**/*.bench.*",
+    "*/*/src/**/*.test.*",
+    "*/*/src/**/*.test-d.ts",
+    "*/*/src/**/__tests__",
+    "*/*/src/**/__mocks__",
+    "*/*/src/**/__snapshots__",
+    "*/*/playground",
+    "*/*/scripts",
+    "*/*/tests",
+    "*/*/*"
+  ],
+  "exclude": [
+    "packages/nest/**",
+    "packages/durable-event-iterator/**",
+    "playgrounds/**"
+  ]
+}

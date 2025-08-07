@@ -1,0 +1,27 @@
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: daily
+    versioning-strategy: increase
+    groups:
+      eslint:
+        patterns:
+          - eslint
+          - '@antfu/eslint-config'
+          - 'eslint-plugin-*'
+      hey-api:
+        patterns:
+          - '@hey-api/*'
+      dev-dependencies-minor-patch:
+        dependency-type: development
+        exclude-patterns:
+          - eslint
+          - '@antfu/eslint-config'
+          - 'eslint-plugin-*'
+          - '@hey-api/*'
+        update-types:
+          - minor
+          - patch
