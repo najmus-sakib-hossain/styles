@@ -6,8 +6,12 @@ cargo add notify oxc_parser oxc_allocator oxc_span oxc_ast colored walkdir flatb
 
 git clone https://github.com/oxc-project/oxc && cd oxc && rm -rf .git && cd ..
 git clone https://github.com/biomejs/biome && cd biome && rm -rf .git && cd ..
+git clone https://github.com/TanStack/query && cd query && rm -rf .git && cd ..
+git clone https://github.com/Effect-TS/effect && cd effect && rm -rf .git && cd ..
 git clone https://github.com/unnoq/orpc && cd orpc && rm -rf .git && cd ..
+git clone https://github.com/trpc/trpc && cd trpc && rm -rf .git && cd ..
 git clone https://github.com/fabian-hiller/valibot && cd valibot && rm -rf .git && cd ..
+git clone https://github.com/colinhacks/zod && cd zod && rm -rf .git && cd ..
 git clone https://github.com/torvalds/linux && cd linux && rm -rf .git && cd ..
 git clone https://github.com/git/git.git && cd git && rm -rf .git && cd ..
 git clone https://github.com/latipun7/charasay && cd charasay && rm -rf .git && cd ..

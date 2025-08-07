@@ -1,6 +1,32 @@
 # Dx
 Enhance Developer Experience
 
+
+```bash
+echo "Item                                     (Size)      (Files)     (Folders)"
+echo "--------------------------------------------------------------------------------"
+(
+    for item in */; do
+        if [ -d "$item" ]; then
+            size_bytes=$(du -sb "$item" 2>/dev/null | awk '{print $1}')
+            size_human=$(du -sh "$item" 2>/dev/null | awk '{print $1}')
+            files=$(find "$item" -type f | wc -l)
+            folders=$(find "$item" -mindepth 1 -type d | wc -l)
+            printf "%s %-40s | %-10s| %-10s| %-10s\n" "$size_bytes" "$item" "($size_human)" "($files)" "($folders)"
+        fi
+    done
+
+    for item in *; do
+        if [ -f "$item" ]; then
+            size_bytes=$(stat -c %s "$item" 2>/dev/null)
+            size_human=$(ls -lh "$item" 2>/dev/null | awk '{print $5}')
+            printf "%s %-40s | %-10s| %-10s| %-10s\n" "$size_bytes" "$item" "($size_human)" "(0)" "(0)"
+        fi
+    done
+) | sort -rn | cut -d' ' -f2-
+```
+
+
 ```rust
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fs::{self, File};
