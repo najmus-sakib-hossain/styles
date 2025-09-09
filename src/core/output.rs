@@ -117,7 +117,8 @@ impl CssOutput {
     pub fn append(&mut self, bytes: &[u8]) -> std::io::Result<()> {
         match &mut self.backend {
             CssBackend::Writer { writer, logical_len, dirty, .. } => {
-                // Sequential write; avoid seek for speed.
+                // Always seek to logical end in case prior operations (blank_range) moved cursor.
+                writer.seek(SeekFrom::Start(*logical_len as u64))?;
                 writer.write_all(bytes)?;
                 *logical_len += bytes.len();
                 *dirty = true;
@@ -167,6 +168,20 @@ impl CssOutput {
         Ok(())
     }
 
+    pub fn flush_now(&mut self) -> std::io::Result<()> {
+        match &mut self.backend {
+            CssBackend::Writer { writer, dirty, last_flush, .. } => {
+                if *dirty { writer.flush()?; *dirty = false; }
+                *last_flush = Instant::now();
+            }
+            CssBackend::Mmap { mmap, dirty, last_flush, .. } => {
+                if *dirty { mmap.flush()?; *dirty = false; }
+                *last_flush = Instant::now();
+            }
+        }
+        Ok(())
+    }
+
     pub fn current_len(&self) -> usize {
         match &self.backend {
             CssBackend::Writer { logical_len, .. } => *logical_len,
@@ -187,6 +202,8 @@ impl CssOutput {
                     writer.write_all(&SPACE_BLOCK[..chunk])?;
                     remaining -= chunk;
                 }
+                // Restore cursor to EOF so subsequent append writes at end.
+                writer.seek(SeekFrom::Start(*logical_len as u64))?;
                 *dirty = true;
             }
             CssBackend::Mmap { mmap, logical_len, dirty, .. } => {

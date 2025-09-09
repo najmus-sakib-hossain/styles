@@ -142,7 +142,7 @@ pub fn rebuild_styles(
         hasher.write(&css_fragment);
         let new_hash_fragment = hasher.finish();
 
-        if need_full_rewrite {
+    if need_full_rewrite {
             let mut state_guard = state.lock().unwrap();
             if state_guard.last_css_hash != new_hash_fragment {
                 state_guard.css_out.replace(&css_fragment)?;
@@ -164,10 +164,11 @@ pub fn rebuild_styles(
                     }
                 }
                 state_guard.last_css_hash = new_hash_fragment;
+                state_guard.css_out.flush_now()?; // ensure removal visible
             }
         } else {
             // Tombstone deletions (non-color) by overwriting ranges with spaces.
-            if !removed.is_empty() {
+        if !removed.is_empty() {
                 let mut state_guard = state.lock().unwrap();
                 // Collect ranges
                 let mut ranges: Vec<(usize, usize)> = Vec::with_capacity(removed.len());
@@ -192,6 +193,7 @@ pub fn rebuild_styles(
                         merged.push((s, l));
                     }
                     for (s, l) in merged { state_guard.css_out.blank_range(s, l)?; }
+            state_guard.css_out.flush_now()?; // force flush so user sees deletion
                 }
             }
             if !added_clone.is_empty() {
