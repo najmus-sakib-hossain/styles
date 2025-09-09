@@ -7,9 +7,9 @@
 .text-red-500 {
   color: var(--color-red-500);
 }
-.flex {
-  display: flex;
-}
 .z-auto {
   z-index: auto;
+}
+.flex {
+  display: flex;
 }
