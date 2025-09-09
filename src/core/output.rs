@@ -73,24 +73,14 @@ impl CssOutput {
             CssBackend::Writer { writer, logical_len, dirty, .. } => {
                 let old_len = *logical_len;
                 let new_len = bytes.len();
-                if new_len > old_len {
-                    // extend file once (cheaper than shrink+grow pattern)
-                    writer.get_mut().set_len(new_len as u64)?;
+                // If shrinking, truncate first to prevent stale trailing rules from remaining visible.
+                if new_len < old_len {
+                    writer.get_mut().set_len(new_len as u64)?; // shrink file size
+                } else if new_len > old_len {
+                    writer.get_mut().set_len(new_len as u64)?; // grow
                 }
                 writer.seek(SeekFrom::Start(0))?;
                 writer.write_all(bytes)?;
-                if old_len > new_len {
-                    // Overwrite leftover tail with spaces to mask stale bytes without truncation cost
-                    let pad = old_len - new_len;
-                    // small stack buffer optimization threshold
-                    if pad <= 1024 {
-                        static SPACE_BLOCK: [u8; 1024] = [b' '; 1024];
-                        writer.write_all(&SPACE_BLOCK[..pad])?;
-                    } else {
-                        let spaces = vec![b' '; pad];
-                        writer.write_all(&spaces)?;
-                    }
-                }
                 *logical_len = new_len;
                 *dirty = true; // defer flush
             }

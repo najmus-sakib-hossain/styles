@@ -64,12 +64,7 @@ pub fn rebuild_styles(
     let all_classes = extract_classes_fast(&html_bytes, prev_len_hint.next_power_of_two());
     let parse_extract_duration = parse_timer.elapsed();
 
-    {
-        let state_guard = state.lock().unwrap();
-        if all_classes.is_empty() && !state_guard.class_cache.is_empty() {
-            return Ok(());
-        }
-    }
+    // Removed early-return that prevented clearing CSS when all classes disappear.
 
     let diff_timer = Instant::now();
     let (added, removed, old_hash_just_for_info) = {
@@ -123,7 +118,7 @@ pub fn rebuild_styles(
             let removed_has_color = removed.iter().any(|c| is_color(c));
             let added_has_color = added.iter().any(|c| is_color(c));
             let missing_index_for_removed = removed.iter().any(|c| !state_guard.css_index.contains_key(c));
-            let force_full = is_initial_run || missing_index_for_removed || removed_has_color || added_has_color;
+            let force_full = is_initial_run || !removed.is_empty() || missing_index_for_removed || removed_has_color || added_has_color;
             if force_full {
                 let class_vec: Vec<String> = state_guard.class_cache.iter().cloned().collect();
                 generator::generate_css_into(&mut state_guard.css_buffer, class_vec.iter());
