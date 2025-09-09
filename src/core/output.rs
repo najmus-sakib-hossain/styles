@@ -24,6 +24,7 @@ pub enum CssBackend {
 
 pub struct CssOutput {
     backend: CssBackend,
+    pending_blanks: Vec<(usize, usize)>, // queued (start,len) deletions
 }
 
 impl CssOutput {
@@ -43,7 +44,7 @@ impl CssOutput {
                 .create(true)
                 .open(path)?;
             let existing_len = f.metadata().map(|m| m.len() as usize).unwrap_or(0);
-            Ok(Self { backend: CssBackend::Writer { writer: BufWriter::with_capacity(64 * 1024, f), logical_len: existing_len, dirty: false, last_flush: Instant::now() } })
+            Ok(Self { backend: CssBackend::Writer { writer: BufWriter::with_capacity(64 * 1024, f), logical_len: existing_len, dirty: false, last_flush: Instant::now() }, pending_blanks: Vec::new() })
         }
     }
 
@@ -58,13 +59,8 @@ impl CssOutput {
         }
         let mmap = unsafe { MmapMut::map_mut(&file)? };
         Ok(Self {
-            backend: CssBackend::Mmap {
-                file,
-                mmap,
-                logical_len: 0,
-                dirty: false,
-                last_flush: Instant::now(),
-            },
+            backend: CssBackend::Mmap { file, mmap, logical_len: 0, dirty: false, last_flush: Instant::now() },
+            pending_blanks: Vec::new(),
         })
     }
 
@@ -139,7 +135,7 @@ impl CssOutput {
         const FLUSH_INTERVAL: Duration = Duration::from_millis(25); // debounce window
         match &mut self.backend {
             CssBackend::Writer { writer, dirty, last_flush, .. } => {
-                let should_flush = cfg!(feature = "eager-flush") || (*dirty && last_flush.elapsed() >= FLUSH_INTERVAL);
+                let should_flush = cfg!(feature = "eager-flush") || !self.pending_blanks.is_empty() || (*dirty && last_flush.elapsed() >= FLUSH_INTERVAL);
                 if should_flush {
                     writer.flush()?;
                     *dirty = false;
@@ -147,7 +143,7 @@ impl CssOutput {
                 }
             }
             CssBackend::Mmap { mmap, dirty, last_flush, .. } => {
-                let should_flush = cfg!(feature = "eager-flush") || (*dirty && last_flush.elapsed() >= FLUSH_INTERVAL);
+                let should_flush = cfg!(feature = "eager-flush") || !self.pending_blanks.is_empty() || (*dirty && last_flush.elapsed() >= FLUSH_INTERVAL);
                 if should_flush {
                     mmap.flush_async()?;
                     *dirty = false;
@@ -204,6 +200,70 @@ impl CssOutput {
         }
         Ok(())
     }
+
+    // Batch variant to minimize repeated seeks & EOF resets during multiple deletions.
+    pub fn blank_ranges(&mut self, ranges: &[(usize, usize)]) -> std::io::Result<()> {
+        if ranges.is_empty() { return Ok(()); }
+        match &mut self.backend {
+            CssBackend::Writer { writer, logical_len, dirty, .. } => {
+                const SPACE_BLOCK: [u8; 1024] = [b' '; 1024];
+                for (start, len) in ranges.iter().copied() {
+                    if start + len > *logical_len { continue; }
+                    writer.seek(SeekFrom::Start(start as u64))?;
+                    let mut remaining = len;
+                    while remaining > 0 {
+                        let chunk = remaining.min(1024);
+                        writer.write_all(&SPACE_BLOCK[..chunk])?;
+                        remaining -= chunk;
+                    }
+                }
+                // Single EOF seek at end to preserve append invariant.
+                writer.seek(SeekFrom::Start(*logical_len as u64))?;
+                *dirty = true;
+            }
+            CssBackend::Mmap { mmap, logical_len, dirty, .. } => {
+                for (start, len) in ranges.iter().copied() {
+                    if start + len > *logical_len { continue; }
+                    for b in &mut mmap[start..start+len] { *b = b' '; }
+                }
+                *dirty = true;
+            }
+        }
+        Ok(())
+    }
+
+    // Queue deletions to apply later (outside critical timing window)
+    pub fn queue_blank_ranges(&mut self, ranges: &[(usize, usize)]) {
+        if ranges.is_empty() { return; }
+        self.pending_blanks.extend_from_slice(ranges);
+        // Mark dirty so a near-term flush will happen
+        match &mut self.backend {
+            CssBackend::Writer { dirty, .. } => *dirty = true,
+            CssBackend::Mmap { dirty, .. } => *dirty = true,
+        }
+    }
+
+    pub fn apply_pending_blanks(&mut self) -> std::io::Result<()> {
+        if self.pending_blanks.is_empty() { return Ok(()); }
+        // Simple merge to reduce IO (assumes small vector)
+        self.pending_blanks.sort_unstable_by_key(|r| r.0);
+        let mut merged: Vec<(usize, usize)> = Vec::with_capacity(self.pending_blanks.len());
+        for (s,l) in self.pending_blanks.drain(..) {
+            if let Some(last) = merged.last_mut() {
+                let end = last.0 + last.1;
+                if s <= end { // overlap
+                    let new_end = (s + l).max(end);
+                    last.1 = new_end - last.0;
+                    continue;
+                }
+            }
+            merged.push((s,l));
+        }
+        self.blank_ranges(&merged)?;
+        Ok(())
+    }
+
+    pub fn has_pending_blanks(&self) -> bool { !self.pending_blanks.is_empty() }
 }
 
 impl Drop for CssOutput {

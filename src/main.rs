@@ -29,10 +29,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         File::create(&config.paths.index_file)?;
     }
 
-    if let Ok(val) = std::env::var("DX_MMAP_THRESHOLD") {
-        if let Ok(parsed) = val.parse::<u64>() {
-            core::output::set_mmap_threshold(parsed);
-        }
+    if std::env::var("DX_FORCE_MMAP").ok().as_deref() == Some("1") {
+        core::output::set_mmap_threshold(0); // force mmap regardless of size
+    } else if let Ok(val) = std::env::var("DX_MMAP_THRESHOLD") {
+        if let Ok(parsed) = val.parse::<u64>() { core::output::set_mmap_threshold(parsed); }
     }
     let css_out = core::output::CssOutput::open(&config.paths.css_file)?;
 
@@ -62,9 +62,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Ok(existing) = std::fs::read(&config.paths.css_file) {
         let mut offset = 0usize;
         for line in existing.split(|b| *b == b'\n') {
-            if line.starts_with(b".") {
-                if let Some(brace) = line.iter().position(|c| *c == b'{') {
-                    let cls = String::from_utf8_lossy(&line[1..brace]).to_string();
+            // Trim leading whitespace for class detection but keep original offset/len
+            let trimmed = match line.iter().position(|c| *c != b' ' && *c != b'\t') {
+                Some(i) => &line[i..],
+                None => { offset += line.len() + 1; continue; }
+            };
+            if trimmed.starts_with(b".") {
+                if let Some(brace) = trimmed.iter().position(|c| *c == b'{') {
+                    let cls = String::from_utf8_lossy(&trimmed[1..brace]).to_string();
                     let len = line.len() + 1;
                     css_index.insert(cls, (offset, len));
                     offset += len;

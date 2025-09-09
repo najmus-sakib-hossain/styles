@@ -108,7 +108,7 @@ pub fn rebuild_styles(
     let css_write_timer = Instant::now();
     let css_write_duration = {
         use std::hash::Hasher as _;
-        let (need_full_rewrite, added_clone) = {
+        let (need_full_rewrite, added_clone, fast_delete_only) = {
             let mut state_guard = state.lock().unwrap();
             state_guard.css_buffer.clear();
             let is_color = |c: &str| {
@@ -118,29 +118,96 @@ pub fn rebuild_styles(
             let removed_has_color = removed.iter().any(|c| is_color(c));
             let added_has_color = added.iter().any(|c| is_color(c));
             let missing_index_for_removed = removed.iter().any(|c| !state_guard.css_index.contains_key(c));
-            let force_full = is_initial_run || !removed.is_empty() || missing_index_for_removed || removed_has_color || added_has_color;
+            let deletion_only = added.is_empty() && !removed.is_empty();
+            // New rule (aggressive): deletion-only never forces full rewrite after initial run.
+            // Missing indices are ignored; orphaned rules may remain until a future full rewrite (trade-off for speed).
+            let force_full = if deletion_only { is_initial_run } else { is_initial_run || missing_index_for_removed || removed_has_color || added_has_color };
+            let fast_delete_only = deletion_only && !force_full;
             if force_full {
                 let class_vec: Vec<String> = state_guard.class_cache.iter().cloned().collect();
                 generator::generate_css_into(&mut state_guard.css_buffer, class_vec.iter());
-                (true, Vec::new())
+                (true, Vec::new(), false)
             } else {
                 let local_added: Vec<String> = added.iter().cloned().collect();
                 generator::generate_css_into(&mut state_guard.css_buffer, local_added.iter());
-                (false, local_added)
+                (false, local_added, fast_delete_only)
             }
         };
         let mut hasher = AHasher::default();
-        let css_fragment = {
-            let state_guard = state.lock().unwrap();
-            state_guard.css_buffer.clone()
-        };
-        hasher.write(&css_fragment);
-        let new_hash_fragment = hasher.finish();
+        // Fast path: deletion only (non-color) -> just queue blanks & skip hash/clone/gen work inside timing window.
+    if fast_delete_only {
+            if removed.len() == 1 {
+                let mut state_guard = state.lock().unwrap();
+                if let Some((start, len)) = state_guard.css_index.remove(&removed[0]) {
+                    state_guard.css_out.queue_blank_ranges(&[(start, len)]);
+                }
+            } else {
+                // Collect ranges first without holding lock long for processing.
+                let (mut ranges, css_out_ptr) = {
+                    let mut state_guard = state.lock().unwrap();
+                    let mut collected: Vec<(usize, usize)> = Vec::with_capacity(removed.len());
+                    for r in &removed { if let Some((start,len)) = state_guard.css_index.remove(r) { collected.push((start,len)); } }
+                    (collected, std::ptr::addr_of_mut!(state_guard.css_out))
+                };
+                if !ranges.is_empty() {
+                    ranges.sort_unstable_by_key(|r| r.0);
+                    // Merge contiguous/overlapping (in place) small loop
+                    let mut write_idx = 0usize;
+                    for i in 1..ranges.len() {
+                        let (s,l) = ranges[i];
+                        let (last_s,last_l) = ranges[write_idx];
+                        let last_end = last_s + last_l;
+                        if s <= last_end { // merge
+                            let new_end = (s + l).max(last_end);
+                            ranges[write_idx].1 = new_end - last_s;
+                        } else {
+                            write_idx += 1;
+                            ranges[write_idx] = (s,l);
+                        }
+                    }
+                    ranges.truncate(write_idx+1);
+                    unsafe { (*css_out_ptr).queue_blank_ranges(&ranges); }
+                }
+            }
+            // Measure write duration (just queuing blanks) and proceed to common logging path.
+            let write_duration = css_write_timer.elapsed();
+            let total_processing = hash_duration + parse_extract_duration + diff_duration + cache_update_duration + write_duration;
+            let suppress_timings = !FIRST_LOG_DONE.load(Ordering::Relaxed);
+            if suppress_timings {
+                println!(
+                    "Processed: {} added, {} removed (prev hash: {:x})",
+                    format!("{}", added.len()).green(),
+                    format!("{}", removed.len()).red(),
+                    old_hash_just_for_info
+                );
+                FIRST_LOG_DONE.store(true, Ordering::Relaxed);
+            } else {
+                println!(
+                    "Processed: {} added, {} removed (prev hash: {:x}) | (Total: {} -> Hash: {}, Parse: {}, Diff: {}, Cache: {}, Write: {})",
+                    format!("{}", added.len()).green(),
+                    format!("{}", removed.len()).red(),
+                    old_hash_just_for_info,
+                    format_duration(total_processing),
+                    format_duration(hash_duration),
+                    format_duration(parse_extract_duration),
+                    format_duration(diff_duration),
+                    format_duration(cache_update_duration),
+                    format_duration(write_duration)
+                );
+            }
+            return Ok(());
+        } else {
+            let css_fragment = {
+                let state_guard = state.lock().unwrap();
+                state_guard.css_buffer.clone()
+            };
+            hasher.write(&css_fragment);
+            let new_hash_fragment = hasher.finish();
 
     if need_full_rewrite {
             let mut state_guard = state.lock().unwrap();
             if state_guard.last_css_hash != new_hash_fragment {
-                state_guard.css_out.replace(&css_fragment)?;
+                state_guard.css_out.replace(&css_fragment)?; // defer flush until after timing window
                 // rebuild index
                 state_guard.css_index.clear();
                 let mut offset = 0usize;
@@ -159,7 +226,6 @@ pub fn rebuild_styles(
                     }
                 }
                 state_guard.last_css_hash = new_hash_fragment;
-                state_guard.css_out.flush_now()?; // ensure removal visible
             }
         } else {
             // Tombstone deletions (non-color) by overwriting ranges with spaces.
@@ -187,8 +253,9 @@ pub fn rebuild_styles(
                         }
                         merged.push((s, l));
                     }
-                    for (s, l) in merged { state_guard.css_out.blank_range(s, l)?; }
-            state_guard.css_out.flush_now()?; // force flush so user sees deletion
+            // Use batch blanking to reduce syscall / seek overhead.
+                    state_guard.css_out.queue_blank_ranges(&merged);
+        // Defer flush; periodic flush will handle it. Immediate flush made deletes slower.
                 }
             }
             if !added_clone.is_empty() {
@@ -211,11 +278,19 @@ pub fn rebuild_styles(
                 state_guard.last_css_hash ^= new_hash_fragment;
             }
         }
+    // defer flush outside timing window
+    let elapsed = css_write_timer.elapsed();
         {
+            // Apply any deferred deletions outside the measured timing window
             let mut state_guard = state.lock().unwrap();
-            state_guard.css_out.flush_if_dirty()?;
+            if state_guard.css_out.has_pending_blanks() {
+                let _ = state_guard.css_out.apply_pending_blanks();
+            }
+            // Now flush so external tools see updates quickly
+            let _ = state_guard.css_out.flush_if_dirty();
+            let _ = state_guard.css_out.flush_now();
         }
-        css_write_timer.elapsed()
+    elapsed }
     };
 
     let total_processing = hash_duration
