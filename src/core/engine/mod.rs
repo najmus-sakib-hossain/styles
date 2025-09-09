@@ -1,5 +1,5 @@
 // pub mod animation;
-pub mod color;
+// pub mod color;
 pub mod composites;
 pub mod container_queries;
 pub mod dynamic;
@@ -7,7 +7,7 @@ pub mod screen;
 pub mod states;
 
 // pub use animation::{PendingAnimation, generate_animation_css};
-pub use color::generate_color_css;
+// pub use color::generate_color_css;
 pub use composites::expand_composite;
 pub use dynamic::generate_dynamic_css;
 pub use screen::{build_block, sanitize_declarations, wrap_media_queries};
@@ -202,7 +202,7 @@ impl StyleEngine {
             crate::core::engine::apply_wrappers_and_states(self, prefix_segment);
         let core_css_raw = crate::core::engine::expand_composite(self, class_name)
             .or_else(|| self.precompiled.get(base_class).cloned())
-            .or_else(|| crate::core::engine::generate_color_css(self, base_class))
+            .or_else(|| crate::core::color::generate_color_css(self, base_class))
             .or_else(|| {
                 if class_name.contains(' ') {
                     None
