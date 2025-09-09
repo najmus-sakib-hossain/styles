@@ -57,6 +57,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     let class_list_checksum = preloaded_checksum;
+    // Pre-scan existing CSS file to build index (best-effort)
+    let mut css_index = ahash::AHashMap::with_capacity(256);
+    if let Ok(existing) = std::fs::read(&config.paths.css_file) {
+        let mut offset = 0usize;
+        for line in existing.split(|b| *b == b'\n') {
+            if line.starts_with(b".") {
+                if let Some(brace) = line.iter().position(|c| *c == b'{') {
+                    let cls = String::from_utf8_lossy(&line[1..brace]).to_string();
+                    let len = line.len() + 1;
+                    css_index.insert(cls, (offset, len));
+                    offset += len;
+                } else { offset += line.len() + 1; }
+            } else { offset += line.len() + 1; }
+        }
+    }
     let app_state = Arc::new(Mutex::new(AppState {
         html_hash: preloaded_hash,
         class_cache: preloaded_cache,
@@ -64,6 +79,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         last_css_hash: existing_css_hash,
         css_buffer: Vec::with_capacity(8192),
         class_list_checksum,
+        css_index,
     }));
 
     if std::env::var("DX_DUMP_STATE_ON_START").is_ok() {

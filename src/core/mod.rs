@@ -23,6 +23,8 @@ pub struct AppState {
     pub last_css_hash: u64,
     pub css_buffer: Vec<u8>,
     pub class_list_checksum: u64,
+    // Map class -> (offset, len) in CSS file for tombstone deletes
+    pub css_index: ahash::AHashMap<String, (usize, usize)>,
 }
 
 impl AppState {
@@ -114,11 +116,15 @@ pub fn rebuild_styles(
         let (need_full_rewrite, added_clone) = {
             let mut state_guard = state.lock().unwrap();
             state_guard.css_buffer.clear();
-            let added_color = added.iter().any(|c| {
+            let is_color = |c: &str| {
                 let base = c.rsplit(':').next().unwrap_or(c);
                 base.starts_with("bg-") || base.starts_with("text-")
-            });
-            if !removed.is_empty() || added_color {
+            };
+            let removed_has_color = removed.iter().any(|c| is_color(c));
+            let added_has_color = added.iter().any(|c| is_color(c));
+            let missing_index_for_removed = removed.iter().any(|c| !state_guard.css_index.contains_key(c));
+            let force_full = is_initial_run || missing_index_for_removed || removed_has_color || added_has_color;
+            if force_full {
                 let class_vec: Vec<String> = state_guard.class_cache.iter().cloned().collect();
                 generator::generate_css_into(&mut state_guard.css_buffer, class_vec.iter());
                 (true, Vec::new())
@@ -140,12 +146,73 @@ pub fn rebuild_styles(
             let mut state_guard = state.lock().unwrap();
             if state_guard.last_css_hash != new_hash_fragment {
                 state_guard.css_out.replace(&css_fragment)?;
+                // rebuild index
+                state_guard.css_index.clear();
+                let mut offset = 0usize;
+                for line in css_fragment.split(|b| *b == b'\n') {
+                    if line.starts_with(b".") {
+                        if let Some(brace) = line.iter().position(|c| *c == b'{') {
+                            let class_name = String::from_utf8_lossy(&line[1..brace]).to_string();
+                            let len = line.len() + 1; // include newline
+                            state_guard.css_index.insert(class_name, (offset, len));
+                            offset += len;
+                        } else {
+                            offset += line.len() + 1;
+                        }
+                    } else {
+                        offset += line.len() + 1;
+                    }
+                }
                 state_guard.last_css_hash = new_hash_fragment;
             }
-        } else if !added_clone.is_empty() {
-            let mut state_guard = state.lock().unwrap();
-            state_guard.css_out.append(&css_fragment)?;
-            state_guard.last_css_hash ^= new_hash_fragment;
+        } else {
+            // Tombstone deletions (non-color) by overwriting ranges with spaces.
+            if !removed.is_empty() {
+                let mut state_guard = state.lock().unwrap();
+                // Collect ranges
+                let mut ranges: Vec<(usize, usize)> = Vec::with_capacity(removed.len());
+                for r in &removed {
+                    if let Some((start, len)) = state_guard.css_index.remove(r) {
+                        ranges.push((start, len));
+                    }
+                }
+                if !ranges.is_empty() {
+                    // Sort & merge contiguous / overlapping for fewer writes
+                    ranges.sort_unstable_by_key(|r| r.0);
+                    let mut merged: Vec<(usize, usize)> = Vec::with_capacity(ranges.len());
+                    for (s, l) in ranges {
+                        if let Some(last) = merged.last_mut() {
+                            let end = last.0 + last.1;
+                            if s <= end { // overlap / touch
+                                let new_end = (s + l).max(end);
+                                last.1 = new_end - last.0;
+                                continue;
+                            }
+                        }
+                        merged.push((s, l));
+                    }
+                    for (s, l) in merged { state_guard.css_out.blank_range(s, l)?; }
+                }
+            }
+            if !added_clone.is_empty() {
+                let mut state_guard = state.lock().unwrap();
+                let base_offset = state_guard.css_out.current_len();
+                state_guard.css_out.append(&css_fragment)?;
+                // index new lines
+                let mut rel = 0usize;
+                for line in css_fragment.split(|b| *b == b'\n') {
+                    if line.is_empty() { rel += 1; continue; }
+                    if line.starts_with(b".") {
+                        if let Some(brace) = line.iter().position(|c| *c == b'{') {
+                            let class_name = String::from_utf8_lossy(&line[1..brace]).to_string();
+                            let len = line.len() + 1;
+                            state_guard.css_index.insert(class_name, (base_offset + rel, len));
+                            rel += len;
+                        } else { rel += line.len() + 1; }
+                    } else { rel += line.len() + 1; }
+                }
+                state_guard.last_css_hash ^= new_hash_fragment;
+            }
         }
         {
             let mut state_guard = state.lock().unwrap();
