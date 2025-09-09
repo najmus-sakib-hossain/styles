@@ -31,10 +31,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     if let Ok(val) = std::env::var("DX_MMAP_THRESHOLD") {
         if let Ok(parsed) = val.parse::<u64>() {
-            core::css_output::set_mmap_threshold(parsed);
+            core::output::set_mmap_threshold(parsed);
         }
     }
-    let css_out = core::css_output::CssOutput::open(&config.paths.css_file)?;
+    let css_out = core::output::CssOutput::open(&config.paths.css_file)?;
 
     let (preloaded_cache, preloaded_hash, preloaded_checksum) = cache::load_cache();
 

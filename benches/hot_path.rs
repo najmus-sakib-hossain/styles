@@ -3,11 +3,15 @@ use criterion::{Criterion, criterion_group, criterion_main};
 use std::sync::{Arc, Mutex};
 use style::{
     config::Config,
-    core::{AppState, css_output::CssOutput, rebuild_styles},
+    core::{AppState, output::{CssOutput, set_mmap_threshold}, rebuild_styles},
 };
 
 fn setup_state() -> Arc<Mutex<AppState>> {
     let config = Config::load().unwrap_or_default();
+
+    // Disable memory mapping for benchmarks to avoid Windows file locking issues
+    set_mmap_threshold(u64::MAX);
+
     let css_out = CssOutput::open(&config.paths.css_file).unwrap();
     Arc::new(Mutex::new(AppState {
         html_hash: 0,
@@ -26,7 +30,9 @@ fn bench_initial(c: &mut Criterion) {
         b.iter(|| {
             let state = setup_state();
             let cfg = Config::load().unwrap_or_default();
-            rebuild_styles(state, &cfg.paths.index_file, true).unwrap();
+            let result = rebuild_styles(state, &cfg.paths.index_file, true);
+            // Ensure proper cleanup
+            drop(result);
         })
     });
     group.finish();
@@ -40,7 +46,9 @@ fn bench_hot(c: &mut Criterion) {
     rebuild_styles(state.clone(), &cfg.paths.index_file, true).unwrap();
     group.bench_function("hot_edit", |b| {
         b.iter(|| {
-            rebuild_styles(state.clone(), &cfg.paths.index_file, false).unwrap();
+            let result = rebuild_styles(state.clone(), &cfg.paths.index_file, false);
+            // Ensure proper cleanup
+            drop(result);
         })
     });
     group.finish();
@@ -54,7 +62,10 @@ fn bench_append_vs_full(c: &mut Criterion) {
     rebuild_styles(state.clone(), &cfg.paths.index_file, true).unwrap();
 
     group.bench_function("append_path", |b| {
-        b.iter(|| rebuild_styles(state.clone(), &cfg.paths.index_file, false).unwrap())
+        b.iter(|| {
+            let result = rebuild_styles(state.clone(), &cfg.paths.index_file, false);
+            drop(result);
+        })
     });
 
     group.bench_function("full_rewrite", |b| {
@@ -63,7 +74,8 @@ fn bench_append_vs_full(c: &mut Criterion) {
                 let mut g = state.lock().unwrap();
                 g.class_cache.clear();
             }
-            rebuild_styles(state.clone(), &cfg.paths.index_file, false).unwrap();
+            let result = rebuild_styles(state.clone(), &cfg.paths.index_file, false);
+            drop(result);
         })
     });
     group.finish();

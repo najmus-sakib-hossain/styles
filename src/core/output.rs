@@ -131,6 +131,18 @@ impl CssOutput {
     }
 }
 
+impl Drop for CssOutput {
+    fn drop(&mut self) {
+        // Ensure proper cleanup of memory-mapped files on Windows
+        if let CssBackend::Mmap { mmap, dirty, .. } = &mut self.backend {
+            if *dirty {
+                let _ = mmap.flush(); // Use synchronous flush for drop
+            }
+            // The mmap will be automatically dropped when it goes out of scope
+        }
+    }
+}
+
 pub fn set_mmap_threshold(bytes: u64) {
     unsafe {
         MMAP_THRESHOLD_BYTES = bytes;

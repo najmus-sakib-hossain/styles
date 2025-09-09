@@ -46,7 +46,7 @@ pub fn resolve_animation_tokens(engine: &StyleEngine, tokens: &[String]) -> Stri
                     continue;
                 }
             }
-            if let Some(c) = crate::core::engine::generate_color_css(engine, piece) {
+            if let Some(c) = crate::core::color::generate_color_css(engine, piece) {
                 decls.push(c);
                 continue;
             }

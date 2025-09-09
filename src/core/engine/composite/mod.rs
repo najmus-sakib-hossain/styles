@@ -38,7 +38,7 @@ pub fn expand_composite(engine: &StyleEngine, class_name: &str) -> Option<String
                 base_rules.push(rule.clone());
                 continue;
             }
-            if let Some(c) = crate::core::engine::generate_color_css(engine, t) {
+            if let Some(c) = crate::core::color::generate_color_css(engine, t) {
                 base_rules.push(c);
                 continue;
             }

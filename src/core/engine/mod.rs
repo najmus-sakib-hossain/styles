@@ -1,16 +1,16 @@
 // pub mod animation;
 // pub mod color;
-pub mod composites;
+pub mod composite;
 pub mod container_queries;
 pub mod dynamic;
-pub mod screen;
+pub mod screens;
 pub mod states;
 
 // pub use animation::{PendingAnimation, generate_animation_css};
 // pub use color::generate_color_css;
-pub use composites::expand_composite;
+pub use composite::expand_composite;
 pub use dynamic::generate_dynamic_css;
-pub use screen::{build_block, sanitize_declarations, wrap_media_queries};
+pub use screens::{build_block, sanitize_declarations, wrap_media_queries};
 pub use states::apply_wrappers_and_states;
 
 #[allow(dead_code)]
