@@ -1,0 +1,9 @@
+image: gitpod/workspace-rust
+
+tasks:
+  - name: Install FlatBuffers
+    init: |
+      sudo apt-get update
+      sudo apt-get install -y flatbuffers-compiler
+  - name: Run the project
+    command: cargo run

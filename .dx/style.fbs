@@ -1,0 +1,62 @@
+namespace StyleSchema;
+
+table Style {
+  name: string (key, required);
+  css: string (required);
+}
+
+table Generator {
+  prefix: string (key, required);
+  property: string (required);
+  multiplier: float;
+  unit: string (required);
+}
+
+table Dynamic {
+  key: string (key, required);
+  property: string (required);
+  values: [DynamicValue];
+}
+
+table DynamicValue {
+    suffix: string (key, required);
+    value: string (required);
+}
+
+table Screen {
+    name: string (key, required);
+    value: string (required);
+}
+
+table State {
+    name: string (key, required);
+    value: string (required);
+}
+
+table ContainerQuery {
+    name: string (key, required);
+    value: string (required);
+}
+
+table Color {
+  name: string (key, required);
+  value: string (required);
+}
+
+table AnimationGenerator {
+  name: string (key, required);
+  template: string (required);
+}
+
+table Config {
+  styles: [Style];
+  generators: [Generator];
+  dynamics: [Dynamic];
+  screens: [Screen];
+  states: [State];
+  container_queries: [ContainerQuery];
+  colors: [Color];
+  animation_generators: [AnimationGenerator];
+}
+
+root_type Config;

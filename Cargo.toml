@@ -1,0 +1,44 @@
+[package]
+name = "style"
+version = "0.0.0"
+edition = "2024"
+
+[lib]
+name = "style"
+path = "src/lib.rs"
+
+[dependencies]
+ahash = "0.8.12"
+colored = "3.0.0"
+cssparser = "0.35.0"
+memchr = "2.7.5"
+memmap2 = "0.9.5"
+notify = "8.2.0"
+notify-debouncer-full = "0.6.0"
+rayon = "1.11.0"
+serde = { version = "1.0.219", features = ["derive"] }
+toml = "0.9.5"
+serde_json = "1.0"
+flatbuffers = "25.2.10"
+smallvec = "1.13.2"
+seahash = "4.1.0"
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "hot_path"
+harness = false
+
+[build-dependencies]
+flatc-rust = "0.2.0"
+toml = "0.9.5"
+flatbuffers = "25.2.10"
+serde = { version = "1.0.219", features = ["derive"] }
+
+[profile.dev]
+opt-level = 2
+debug = true
+overflow-checks = false
+incremental = true
+lto = "thin"

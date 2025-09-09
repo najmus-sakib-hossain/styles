@@ -1,0 +1,13 @@
+# -----------------------------------------------------------------------------
+# [screens]
+# Defines named breakpoints for creating responsive designs.
+# These are used to prefix any utility class, e.g., "md:text-lg".
+# Format: name = "min-width value"
+# -----------------------------------------------------------------------------
+[screens]
+xs = "480px"
+sm = "640px"
+md = "768px"
+lg = "1024px"
+xl = "1280px"
+"2xl" = "1536px"

@@ -1,0 +1,15 @@
+# -----------------------------------------------------------------------------
+# [animation_generators]
+# Defines the grammar for sentence-style animation utilities.
+# Placeholders:
+#  {hash}  -> unique hash per animation instance
+#  {value1|1s} -> duration (default 1s)
+#  {value2|0s} -> delay (default 0s)
+#  {rules} -> expanded CSS declarations collected from from:/to:/via: segments
+#  {perc}  -> percentage used by via: entries
+# -----------------------------------------------------------------------------
+[animation_generators]
+"animate" = "animation-name: dx-animation-name-{hash}; animation-duration: {value1|1s}; animation-delay: {value2|0s};"
+"from" = "0% {{ {rules} }}"
+"to" = "100% {{ {rules} }}"
+"via" = "{perc}% {{ {rules} }}"

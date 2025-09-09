@@ -1,0 +1,15 @@
+:root {
+  --color-red-500: oklch(0.637 0.237 25.331);
+}
+.dark {
+  --color-red-500: oklch(0.637 0.237 25.331);
+}
+.z-auto {
+  z-index: auto;
+}
+.text-red-500 {
+  color: var(--color-red-500);
+}
+.flex {
+  display: flex;
+}

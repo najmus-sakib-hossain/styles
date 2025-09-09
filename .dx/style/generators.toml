@@ -1,0 +1,127 @@
+# -----------------------------------------------------------------------------
+# [generators]
+# For classes that are generated from any number you want.
+# Format: "prefix|css-property" = { multiplier = <number>, unit = "<css-unit>" }
+# -----------------------------------------------------------------------------
+[generators]
+"-backdrop-hue-rotate|backdrop-filter" = { multiplier = -1, unit = "deg" }
+"-hue-rotate|filter" = { multiplier = -1, unit = "deg" }
+"-m|margin" = { multiplier = -0.25, unit = "rem" }
+"-mb|margin-bottom" = { multiplier = -0.25, unit = "rem" }
+"-ml|margin-left" = { multiplier = -0.25, unit = "rem" }
+"-mr|margin-right" = { multiplier = -0.25, unit = "rem" }
+"-mt|margin-top" = { multiplier = -0.25, unit = "rem" }
+"-rotate|--transform-rotate" = { multiplier = -1, unit = "deg" }
+"-skew-x|--transform-skew-x" = { multiplier = -1, unit = "deg" }
+"-skew-y|--transform-skew-y" = { multiplier = -1, unit = "deg" }
+"-space-x|--space-x-reverse,margin-left" = { multiplier = -0.25, unit = "rem" }
+"-space-y|--space-y-reverse,margin-top" = { multiplier = -0.25, unit = "rem" }
+"-translate-x|--transform-translate-x" = { multiplier = -0.25, unit = "rem" }
+"-translate-y|--transform-translate-y" = { multiplier = -0.25, unit = "rem" }
+"aspect|aspect-ratio" = { multiplier = 1, unit = "" }
+"backdrop-blur|backdrop-filter" = { multiplier = 1, unit = "px" }
+"backdrop-brightness|backdrop-filter" = { multiplier = 0.01, unit = "" }
+"backdrop-contrast|backdrop-filter" = { multiplier = 0.01, unit = "" }
+"backdrop-grayscale|backdrop-filter" = { multiplier = 0.01, unit = "" }
+"backdrop-hue-rotate|backdrop-filter" = { multiplier = 1, unit = "deg" }
+"backdrop-invert|backdrop-filter" = { multiplier = 0.01, unit = "" }
+"backdrop-opacity|backdrop-filter" = { multiplier = 0.01, unit = "" }
+"backdrop-saturate|backdrop-filter" = { multiplier = 0.01, unit = "" }
+"backdrop-sepia|backdrop-filter" = { multiplier = 0.01, unit = "" }
+"bg-opacity|--tw-bg-opacity" = { multiplier = 0.01, unit = "" }
+"blur|filter" = { multiplier = 1, unit = "px" }
+"border-b-w|border-bottom-width" = { multiplier = 1, unit = "px" }
+"border-l-w|border-left-width" = { multiplier = 1, unit = "px" }
+"border-opacity|--tw-border-opacity" = { multiplier = 0.01, unit = "" }
+"border-r-w|border-right-width" = { multiplier = 1, unit = "px" }
+"border-spacing-x|border-spacing" = { multiplier = 0.25, unit = "rem" }
+"border-spacing-y|border-spacing" = { multiplier = 0.25, unit = "rem" }
+"border-t-w|border-top-width" = { multiplier = 1, unit = "px" }
+"border-w|border-width" = { multiplier = 1, unit = "px" }
+"border|border-width" = { multiplier = 1, unit = "px" } # Added to support Tailwind syntax border-2, border-4 via generator
+"brightness|filter" = { multiplier = 0.01, unit = "" }
+"col-end|grid-column-end" = { multiplier = 1, unit = "" }
+"col-span|grid-column" = { multiplier = 1, unit = "" }
+"col-start|grid-column-start" = { multiplier = 1, unit = "" }
+"columns|columns" = { multiplier = 1, unit = "" }
+"contrast|filter" = { multiplier = 0.01, unit = "" }
+"decoration-thickness|text-decoration-thickness" = { multiplier = 1, unit = "px" }
+"delay|transition-delay" = { multiplier = 1, unit = "ms" }
+"divide-opacity|--tw-divide-opacity" = { multiplier = 0.01, unit = "" }
+"divide-x-w|border-left-width" = { multiplier = 1, unit = "px" }
+"divide-y-w|border-top-width" = { multiplier = 1, unit = "px" }
+"drop-shadow|filter" = { multiplier = 1, unit = "px" }
+"duration|transition-duration" = { multiplier = 1, unit = "ms" }
+"fill-w|fill" = { multiplier = 1, unit = "" }
+"flex-basis|flex-basis" = { multiplier = 0.25, unit = "rem" }
+"gap-x|column-gap" = { multiplier = 0.25, unit = "rem" }
+"gap|gap" = { multiplier = 0.25, unit = "rem" }
+"gap-y|row-gap" = { multiplier = 0.25, unit = "rem" }
+"p|padding" = { multiplier = 0.25, unit = "rem" }
+"px|padding-left, padding-right" = { multiplier = 0.25, unit = "rem" }
+"py|padding-top, padding-bottom" = { multiplier = 0.25, unit = "rem" }
+"pt|padding-top" = { multiplier = 0.25, unit = "rem" }
+"pr|padding-right" = { multiplier = 0.25, unit = "rem" }
+"pb|padding-bottom" = { multiplier = 0.25, unit = "rem" }
+"pl|padding-left" = { multiplier = 0.25, unit = "rem" }
+"m|margin" = { multiplier = 0.25, unit = "rem" }
+"mx|margin-left, margin-right" = { multiplier = 0.25, unit = "rem" }
+"my|margin-top, margin-bottom" = { multiplier = 0.25, unit = "rem" }
+"mt|margin-top" = { multiplier = 0.25, unit = "rem" }
+"mr|margin-right" = { multiplier = 0.25, unit = "rem" }
+"mb|margin-bottom" = { multiplier = 0.25, unit = "rem" }
+"ml|margin-left" = { multiplier = 0.25, unit = "rem" }
+"grayscale|filter" = { multiplier = 0.01, unit = "" }
+"grid-cols-fill|grid-template-columns" = { multiplier = 1, unit = "rem" }
+"grid-cols-fit|grid-template-columns" = { multiplier = 1, unit = "rem" }
+"h|height" = { multiplier = 0.25, unit = "rem" }
+"hue-rotate|filter" = { multiplier = 1, unit = "deg" }
+"invert|filter" = { multiplier = 0.01, unit = "" }
+"leading|line-height" = { multiplier = 0.25, unit = "rem" }
+"line-clamp|--webkit-line-clamp" = { multiplier = 1, unit = "" }
+"max-h|max-height" = { multiplier = 0.25, unit = "rem" }
+"opacity|opacity" = { multiplier = 0.01, unit = "" }
+"order|order" = { multiplier = 1, unit = "" }
+"outline-offset|outline-offset" = { multiplier = 1, unit = "px" }
+"outline-w|outline-width" = { multiplier = 1, unit = "px" }
+"placeholder-opacity|--tw-placeholder-opacity" = { multiplier = 0.01, unit = "" }
+"ring-offset-opacity|--tw-ring-offset-opacity" = { multiplier = 0.01, unit = "" }
+"ring-offset-w|--tw-ring-offset-width" = { multiplier = 1, unit = "px" }
+"ring-opacity|--tw-ring-opacity" = { multiplier = 0.01, unit = "" }
+"ring-w|--tw-ring-offset-shadow, --tw-ring-shadow, box-shadow" = { multiplier = 1, unit = "px" }
+"rotate|--transform-rotate" = { multiplier = 1, unit = "deg" }
+"row-end|grid-row-end" = { multiplier = 1, unit = "" }
+"row-span|grid-row" = { multiplier = 1, unit = "" }
+"row-start|grid-row-start" = { multiplier = 1, unit = "" }
+"saturate|filter" = { multiplier = 0.01, unit = "" }
+"scale-x|--transform-scale-x" = { multiplier = 0.01, unit = "" }
+"scale-y|--transform-scale-y" = { multiplier = 0.01, unit = "" }
+"scale|--transform-scale-x, --transform-scale-y" = { multiplier = 0.01, unit = "" }
+"scroll-m|scroll-margin" = { multiplier = 0.25, unit = "rem" }
+"scroll-mb|scroll-margin-bottom" = { multiplier = 0.25, unit = "rem" }
+"scroll-ml|scroll-margin-left" = { multiplier = 0.25, unit = "rem" }
+"scroll-mr|scroll-margin-right" = { multiplier = 0.25, unit = "rem" }
+"scroll-mt|scroll-margin-top" = { multiplier = 0.25, unit = "rem" }
+"scroll-p|scroll-padding" = { multiplier = 0.25, unit = "rem" }
+"scroll-pb|scroll-padding-bottom" = { multiplier = 0.25, unit = "rem" }
+"scroll-pl|scroll-padding-left" = { multiplier = 0.25, unit = "rem" }
+"scroll-pr|scroll-padding-right" = { multiplier = 0.25, unit = "rem" }
+"scroll-pt|scroll-padding-top" = { multiplier = 0.25, unit = "rem" }
+"sepia|filter" = { multiplier = 0.01, unit = "" }
+"shadow-opacity|--tw-shadow-opacity" = { multiplier = 0.01, unit = "" }
+"skew-x|--transform-skew-x" = { multiplier = 1, unit = "deg" }
+"skew-y|--transform-skew-y" = { multiplier = 1, unit = "deg" }
+"space-x|--space-x-reverse,margin-left" = { multiplier = 0.25, unit = "rem" }
+"space-y|--space-y-reverse,margin-top" = { multiplier = 0.25, unit = "rem" }
+"stroke-w|stroke-width" = { multiplier = 1, unit = "" }
+"text-opacity|--tw-text-opacity" = { multiplier = 0.01, unit = "" }
+"translate-x|--transform-translate-x" = { multiplier = 0.25, unit = "rem" }
+"translate-y|--transform-translate-y" = { multiplier = 0.25, unit = "rem" }
+"underline-offset|text-underline-offset" = { multiplier = 1, unit = "px" }
+"w|width" = { multiplier = 0.25, unit = "rem" }
+"z|z-index" = { multiplier = 10, unit = "" }
+"rounded|border-radius" = { multiplier = 0.25, unit = "rem" }
+"rounded-t|border-top-left-radius, border-top-right-radius" = { multiplier = 0.25, unit = "rem" }
+"rounded-r|border-top-right-radius, border-bottom-right-radius" = { multiplier = 0.25, unit = "rem" }
+"rounded-b|border-bottom-right-radius, border-bottom-left-radius" = { multiplier = 0.25, unit = "rem" }
+"rounded-l|border-top-left-radius, border-bottom-left-radius" = { multiplier = 0.25, unit = "rem" }

@@ -1,0 +1,8 @@
+# DX Style configuration (moved to .dx)
+[paths]
+html_dir = "playgrounds/html"
+index_file = "playgrounds/html/index.html"
+css_file = "playgrounds/html/style.css"
+
+[watch]
+debounce_ms = 1
