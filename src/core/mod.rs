@@ -118,7 +118,9 @@ pub fn rebuild_styles(
             let removed_has_color = removed.iter().any(|c| is_color(c));
             let added_has_color = added.iter().any(|c| is_color(c));
             let missing_index_for_removed = removed.iter().any(|c| !state_guard.css_index.contains_key(c));
-            let force_full = is_initial_run || !removed.is_empty() || missing_index_for_removed || removed_has_color || added_has_color;
+            // We only need a full rewrite when removed classes exist OR color classes changed
+            // or we lack index info. User-added manual CSS (outside managed marker) is preserved by backend.
+            let force_full = is_initial_run ||(!removed.is_empty()) || missing_index_for_removed || removed_has_color || added_has_color;
             if force_full {
                 let class_vec: Vec<String> = state_guard.class_cache.iter().cloned().collect();
                 generator::generate_css_into(&mut state_guard.css_buffer, class_vec.iter());
@@ -193,7 +195,7 @@ pub fn rebuild_styles(
             }
             if !added_clone.is_empty() {
                 let mut state_guard = state.lock().unwrap();
-                let base_offset = state_guard.css_out.current_len();
+                let base_offset = state_guard.css_out.current_len(); // relative to managed region
                 state_guard.css_out.append(&css_fragment)?;
                 // index new lines
                 let mut rel = 0usize;

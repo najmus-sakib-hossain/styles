@@ -1,22 +1,27 @@
 use memmap2::MmapMut;
 use std::fs::{File, OpenOptions};
-use std::io::{BufWriter, Seek, SeekFrom, Write};
+use std::io::{BufWriter, Read, Seek, SeekFrom, Write};
 use std::path::Path;
 use std::time::{Duration, Instant};
 
 static mut MMAP_THRESHOLD_BYTES: u64 = 64 * 1024;
 
+// Marker that denotes start of the auto-managed style region. Anything before
+// this marker is considered user-owned and will be preserved verbatim.
+// The generator only rewrites bytes after this marker.
+const MANAGED_MARKER: &str = "/* dx-styles */\n";
+
 pub enum CssBackend {
     Writer {
         writer: BufWriter<File>,
-        logical_len: usize,
+        logical_len: usize, // total file length (user + marker + managed)
         dirty: bool,
         last_flush: Instant,
     },
     Mmap {
         file: File,
         mmap: MmapMut,
-        logical_len: usize,
+        logical_len: usize, // total file length
         dirty: bool,
         last_flush: Instant,
     },
@@ -24,27 +29,59 @@ pub enum CssBackend {
 
 pub struct CssOutput {
     backend: CssBackend,
+    managed_base: usize, // absolute offset where managed region starts (after marker)
 }
 
 impl CssOutput {
     pub fn open(path: &str) -> std::io::Result<Self> {
         let p = Path::new(path);
         if !p.exists() {
-            File::create(p)?;
+            File::create(p)?; // create empty file
         }
         let meta_len = p.metadata().map(|m| m.len()).unwrap_or(0);
         let threshold = unsafe { MMAP_THRESHOLD_BYTES };
         if meta_len >= threshold {
             Self::open_mmap(path)
         } else {
-            let f = OpenOptions::new()
-                .read(true)
-                .write(true)
-                .create(true)
-                .open(path)?;
-            let existing_len = f.metadata().map(|m| m.len() as usize).unwrap_or(0);
-            Ok(Self { backend: CssBackend::Writer { writer: BufWriter::with_capacity(64 * 1024, f), logical_len: existing_len, dirty: false, last_flush: Instant::now() } })
+            Self::open_writer(path)
         }
+    }
+
+    fn ensure_marker_in_memory(buf: &[u8]) -> Option<usize> {
+        if let Some(pos) = twoway::find_bytes(buf, MANAGED_MARKER.as_bytes()) {
+            Some(pos + MANAGED_MARKER.len())
+        } else {
+            None
+        }
+    }
+
+    fn open_writer(path: &str) -> std::io::Result<Self> {
+        let mut f = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .open(path)?;
+        let mut existing = Vec::new();
+        f.read_to_end(&mut existing)?;
+        let mut logical_len = existing.len();
+        let managed_base = if let Some(base) = Self::ensure_marker_in_memory(&existing) {
+            base
+        } else {
+            // Append marker at EOF
+            f.seek(SeekFrom::End(0))?;
+            f.write_all(MANAGED_MARKER.as_bytes())?;
+            logical_len += MANAGED_MARKER.len();
+            logical_len // after marker; region empty
+        };
+        Ok(Self {
+            backend: CssBackend::Writer {
+                writer: BufWriter::with_capacity(64 * 1024, f),
+                logical_len,
+                dirty: false,
+                last_flush: Instant::now(),
+            },
+            managed_base,
+        })
     }
 
     fn open_mmap(path: &str) -> std::io::Result<Self> {
@@ -54,50 +91,67 @@ impl CssOutput {
             .create(true)
             .open(path)?;
         if file.metadata()?.len() == 0 {
-            file.set_len(4096)?;
+            file.set_len(4096)?; // provide capacity
         }
+        let mut logical_len = file.metadata()?.len() as usize;
+        let mut tmp = Vec::with_capacity(logical_len);
+        {
+            let mut reader = std::io::BufReader::new(&file);
+            use std::io::Read;
+            reader.read_to_end(&mut tmp)?;
+        }
+        let managed_base = if let Some(base) = Self::ensure_marker_in_memory(&tmp) {
+            base
+        } else {
+            // Need to append marker; ensure capacity
+            let needed = logical_len + MANAGED_MARKER.len();
+            if needed > file.metadata()?.len() as usize {
+                let new_len = (needed.next_power_of_two()).max(4096) as u64;
+                file.set_len(new_len)?;
+            }
+            let mut mmap_temp = unsafe { MmapMut::map_mut(&file)? };
+            mmap_temp[logical_len..logical_len + MANAGED_MARKER.len()]
+                .copy_from_slice(MANAGED_MARKER.as_bytes());
+            mmap_temp.flush()?; // make marker visible
+            logical_len += MANAGED_MARKER.len();
+            logical_len // region empty; base after marker
+        };
         let mmap = unsafe { MmapMut::map_mut(&file)? };
         Ok(Self {
             backend: CssBackend::Mmap {
                 file,
                 mmap,
-                logical_len: 0,
+                logical_len,
                 dirty: false,
                 last_flush: Instant::now(),
             },
+            managed_base,
         })
     }
 
     pub fn replace(&mut self, bytes: &[u8]) -> std::io::Result<()> {
         match &mut self.backend {
             CssBackend::Writer { writer, logical_len, dirty, .. } => {
-                let old_len = *logical_len;
-                let new_len = bytes.len();
-                // If shrinking, truncate first to prevent stale trailing rules from remaining visible.
-                if new_len < old_len {
-                    writer.get_mut().set_len(new_len as u64)?; // shrink file size
-                } else if new_len > old_len {
-                    writer.get_mut().set_len(new_len as u64)?; // grow
-                }
-                writer.seek(SeekFrom::Start(0))?;
+                // Strategy: preserve everything before managed_base, truncate to managed_base, then append bytes.
+                let truncate_len = self.managed_base as u64;
+                writer.get_mut().set_len(truncate_len)?;
+                writer.seek(SeekFrom::Start(truncate_len))?;
                 writer.write_all(bytes)?;
-                *logical_len = new_len;
-                *dirty = true; // defer flush
+                *logical_len = self.managed_base + bytes.len();
+                *dirty = true;
             }
-            CssBackend::Mmap {
-                file,
-                mmap,
-                logical_len,
-                dirty,
-                ..
-            } => {
-                if mmap.len() < bytes.len() {
-                    let new_len = (bytes.len().next_power_of_two()).max(4096);
+            CssBackend::Mmap { file, mmap, logical_len, dirty, .. } => {
+                let needed_total = self.managed_base + bytes.len();
+                if mmap.len() < needed_total {
+                    let new_len = (needed_total.next_power_of_two()).max(4096);
                     file.set_len(new_len as u64)?;
                     *mmap = unsafe { MmapMut::map_mut(&*file)? };
                 }
-                mmap[..bytes.len()].copy_from_slice(bytes);
-                *logical_len = bytes.len();
+                // Copy bytes into place
+                mmap[self.managed_base..self.managed_base + bytes.len()].copy_from_slice(bytes);
+                *logical_len = needed_total;
+                // If previous content longer, shrink file to new size
+                file.set_len(*logical_len as u64)?;
                 *dirty = true;
             }
         }
@@ -107,19 +161,12 @@ impl CssOutput {
     pub fn append(&mut self, bytes: &[u8]) -> std::io::Result<()> {
         match &mut self.backend {
             CssBackend::Writer { writer, logical_len, dirty, .. } => {
-                // Always seek to logical end in case prior operations (blank_range) moved cursor.
                 writer.seek(SeekFrom::Start(*logical_len as u64))?;
                 writer.write_all(bytes)?;
                 *logical_len += bytes.len();
                 *dirty = true;
             }
-            CssBackend::Mmap {
-                file,
-                mmap,
-                logical_len,
-                dirty,
-                ..
-            } => {
+            CssBackend::Mmap { file, mmap, logical_len, dirty, .. } => {
                 let needed = *logical_len + bytes.len();
                 if mmap.len() < needed {
                     let new_len = (needed.next_power_of_two()).max(4096);
@@ -173,18 +220,22 @@ impl CssOutput {
     }
 
     pub fn current_len(&self) -> usize {
-        match &self.backend {
+        // Return length of managed region only (excluding user preamble + marker)
+        let total = match &self.backend {
             CssBackend::Writer { logical_len, .. } => *logical_len,
             CssBackend::Mmap { logical_len, .. } => *logical_len,
-        }
+        };
+        total.saturating_sub(self.managed_base)
     }
 
     // Overwrite a region with spaces (tombstone). Safe for both backends, avoids shifting bytes.
     pub fn blank_range(&mut self, start: usize, len: usize) -> std::io::Result<()> {
+        // start is relative to managed region; translate to absolute.
+        let abs_start = self.managed_base + start;
         match &mut self.backend {
             CssBackend::Writer { writer, logical_len, dirty, .. } => {
-                if start + len > *logical_len { return Ok(()); }
-                writer.seek(SeekFrom::Start(start as u64))?;
+                if abs_start + len > *logical_len { return Ok(()); }
+                writer.seek(SeekFrom::Start(abs_start as u64))?;
                 const SPACE_BLOCK: [u8; 1024] = [b' '; 1024];
                 let mut remaining = len;
                 while remaining > 0 {
@@ -192,13 +243,12 @@ impl CssOutput {
                     writer.write_all(&SPACE_BLOCK[..chunk])?;
                     remaining -= chunk;
                 }
-                // Restore cursor to EOF so subsequent append writes at end.
-                writer.seek(SeekFrom::Start(*logical_len as u64))?;
+                writer.seek(SeekFrom::Start(*logical_len as u64))?; // restore to EOF
                 *dirty = true;
             }
             CssBackend::Mmap { mmap, logical_len, dirty, .. } => {
-                if start + len > *logical_len { return Ok(()); }
-                for b in &mut mmap[start..start+len] { *b = b' '; }
+                if abs_start + len > *logical_len { return Ok(()); }
+                for b in &mut mmap[abs_start..abs_start+len] { *b = b' '; }
                 *dirty = true;
             }
         }
@@ -208,17 +258,12 @@ impl CssOutput {
 
 impl Drop for CssOutput {
     fn drop(&mut self) {
-        // Ensure proper cleanup of memory-mapped files on Windows
         match &mut self.backend {
             CssBackend::Writer { writer, dirty, .. } => {
-                if *dirty {
-                    let _ = writer.flush();
-                }
+                if *dirty { let _ = writer.flush(); }
             }
             CssBackend::Mmap { mmap, dirty, .. } => {
-                if *dirty {
-                    let _ = mmap.flush(); // synchronous flush at drop
-                }
+                if *dirty { let _ = mmap.flush(); }
             }
         }
     }
