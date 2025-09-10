@@ -211,6 +211,14 @@ pub fn rebuild_styles(
                     } else { rel += line.len() + 1; }
                 }
                 state_guard.last_css_hash ^= new_hash_fragment;
+                // Immediate flush optimization: when only a small number of classes were added
+                // (interactive typing), users expect the CSS file to update near-instantly.
+                // Flush immediately when (a) DX_IMMEDIATE_FLUSH env var is set OR
+                // (b) small batch size heuristic is met.
+                let immediate = std::env::var("DX_IMMEDIATE_FLUSH").is_ok() || added_clone.len() <= 16;
+                if immediate {
+                    state_guard.css_out.flush_now()?;
+                }
             }
         }
         {
@@ -248,6 +256,14 @@ pub fn rebuild_styles(
             format_duration(cache_update_duration),
             format_duration(css_write_duration)
         );
+    }
+
+    // Final synchronous flush to guarantee bytes are visible immediately after log.
+    if !added.is_empty() || !removed.is_empty() {
+        if let Ok(mut guard) = state.lock() {
+            // Best-effort flush; ignore error to avoid breaking hot loop.
+            let _ = guard.css_out.flush_now();
+        }
     }
 
     Ok(())

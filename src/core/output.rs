@@ -183,20 +183,32 @@ impl CssOutput {
 
     pub fn flush_if_dirty(&mut self) -> std::io::Result<()> {
         // Only flush if enough time has elapsed or feature forces eager flushing.
-        const FLUSH_INTERVAL: Duration = Duration::from_millis(25); // debounce window
+        // Env overrides:
+        //  DX_FLUSH_INTERVAL_MS=0  -> flush every change immediately
+        //  DX_FLUSH_INTERVAL_MS=N  -> custom interval (ms)
+        use std::sync::OnceLock;
+        static FLUSH_INTERVAL: OnceLock<Duration> = OnceLock::new();
+        let interval = *FLUSH_INTERVAL.get_or_init(|| {
+            std::env::var("DX_FLUSH_INTERVAL_MS")
+                .ok()
+                .and_then(|v| v.parse::<u64>().ok())
+                .map(Duration::from_millis)
+                .unwrap_or_else(|| Duration::from_millis(25))
+        });
         match &mut self.backend {
             CssBackend::Writer { writer, dirty, last_flush, .. } => {
-                let should_flush = cfg!(feature = "eager-flush") || (*dirty && last_flush.elapsed() >= FLUSH_INTERVAL);
+                let should_flush = cfg!(feature = "eager-flush") || interval.is_zero() || (*dirty && last_flush.elapsed() >= interval);
                 if should_flush {
-                    writer.flush()?;
+                    writer.flush()?; // synchronous flush
                     *dirty = false;
                     *last_flush = Instant::now();
                 }
             }
             CssBackend::Mmap { mmap, dirty, last_flush, .. } => {
-                let should_flush = cfg!(feature = "eager-flush") || (*dirty && last_flush.elapsed() >= FLUSH_INTERVAL);
+                let should_flush = cfg!(feature = "eager-flush") || interval.is_zero() || (*dirty && last_flush.elapsed() >= interval);
                 if should_flush {
-                    mmap.flush_async()?;
+                    // Use synchronous flush (not async) for immediate visibility.
+                    mmap.flush()?;
                     *dirty = false;
                     *last_flush = Instant::now();
                 }
