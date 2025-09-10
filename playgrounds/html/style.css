@@ -1,13 +1,8 @@
-.border-2 {
-  border-width: 2px;
+.grid {
+  display: grid;
 }
-.flex {
-  display: flex;
+.grid {
+  display: grid;
 }
-.flex {
-  display: flex;
-}
-.flex {
-  display: flex;
-}
-.test {}
+.border {}
+.border {}
