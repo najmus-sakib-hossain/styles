@@ -5,3 +5,5 @@ pub mod datasource;
 pub mod generator;
 pub mod parser;
 pub mod telemetry;
+pub mod header;
+pub mod platform;

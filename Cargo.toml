@@ -23,6 +23,7 @@ flatbuffers = "25.2.10"
 smallvec = "1.13.2"
 seahash = "4.1.0"
 twoway = "0.2"
+winapi = { version = "0.3", features = ["wincon","consoleapi","minwindef","processenv","winbase"] }
 
 [features]
 eager-flush = []
