@@ -1,8 +1,8 @@
 # DX Style configuration (moved to .dx)
 [paths]
-html_dir = "playgrounds/html"
-index_file = "playgrounds/html/index.html"
-css_file = "playgrounds/html/style.css"
+html_dir = "playgrounds"
+index_file = "playgrounds/index.html"
+css_file = "playgrounds/style.css"
 
 [watch]
 debounce_ms = 1
