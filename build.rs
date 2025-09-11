@@ -75,8 +75,6 @@ fn read_toml_file<T: for<'de> Deserialize<'de>>(path: &Path) -> Option<T> {
 }
 
 fn main() {
-    // Load config to allow overriding of style directory (paths.style_dir)
-    // Falls back to the previous hard-coded value if not provided.
     let style_dir_str = (|| {
         if let Ok(content) = std::fs::read_to_string(".dx/config.toml") {
             if let Ok(value) = content.parse::<toml::Value>() {
@@ -279,7 +277,6 @@ fn main() {
     let cq_vec = builder.create_vector(&cq_offsets);
     let colors_vec = builder.create_vector(&color_offsets);
     let anim_gen_vec = builder.create_vector(&anim_gen_offsets);
-    // Serialize properties
     let mut property_offsets = Vec::new();
     for (name, meta) in properties {
         let name_offset = builder.create_string(&name);
@@ -295,7 +292,6 @@ fn main() {
         property_offsets.push(prop_offset);
     }
     let properties_vec = builder.create_vector(&property_offsets);
-    // Prepare raw base layer CSS (no TOML indirection)
     const BASE_CSS: &str = "*, ::after, ::before, ::backdrop, ::file-selector-button {\n  box-sizing: border-box;\n  margin: 0;\n  padding: 0;\n  border: 0 solid;\n}\nhtml, :host {\n  line-height: 1.5;\n  -webkit-text-size-adjust: 100%;\n  tab-size: 4;\n  font-family: var(--default-font-family, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\");\n  font-feature-settings: var(--default-font-feature-settings, normal);\n  font-variation-settings: var(--default-font-variation-settings, normal);\n  -webkit-tap-highlight-color: transparent;\n}\nhr {\n  height: 0;\n  color: inherit;\n  border-top-width: 1px;\n}\nabbr:where([title]) {\n  -webkit-text-decoration: underline dotted;\n  text-decoration: underline dotted;\n}\nh1, h2, h3, h4, h5, h6 {\n  font-size: inherit;\n  font-weight: inherit;\n}\na {\n  color: inherit;\n  -webkit-text-decoration: inherit;\n  text-decoration: inherit;\n}\nb, strong {\n  font-weight: bolder;\n}\ncode, kbd, samp, pre {\n  font-family: var(--default-mono-font-family, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace);\n  font-feature-settings: var(--default-mono-font-feature-settings, normal);\n  font-variation-settings: var(--default-mono-font-variation-settings, normal);\n  font-size: 1em;\n}\nsmall {\n  font-size: 80%;\n}\nsub, sup {\n  font-size: 75%;\n  line-height: 0;\n  position: relative;\n  vertical-align: baseline;\n}\nsub {\n  bottom: -0.25em;\n}\nsup {\n  top: -0.5em;\n}\ntable {\n  text-indent: 0;\n  border-color: inherit;\n  border-collapse: collapse;\n}\n:-moz-focusring {\n  outline: auto;\n}\nprogress {\n  vertical-align: baseline;\n}\nsummary {\n  display: list-item;\n}\nol, ul, menu {\n  list-style: none;\n}\nimg, svg, video, canvas, audio, iframe, embed, object {\n  display: block;\n  vertical-align: middle;\n}\nimg, video {\n  max-width: 100%;\n  height: auto;\n}\nbutton, input, select, optgroup, textarea, ::file-selector-button {\n  font: inherit;\n  font-feature-settings: inherit;\n  font-variation-settings: inherit;\n  letter-spacing: inherit;\n  color: inherit;\n  border-radius: 0;\n  background-color: transparent;\n  opacity: 1;\n}\n:where(select:is([multiple], [size])) optgroup {\n  font-weight: bolder;\n}\n:where(select:is([multiple], [size])) optgroup option {\n  padding-inline-start: 20px;\n}\n::file-selector-button {\n  margin-inline-end: 4px;\n}\n::placeholder {\n  opacity: 1;\n}\n@supports (not (-webkit-appearance: -apple-pay-button))  or (contain-intrinsic-size: 1px) {\n  ::placeholder {\n    color: currentcolor;\n    @supports (color: color-mix(in lab, red, red)) {\n      color: color-mix(in oklab, currentcolor 50%, transparent);\n    }\n  }\n}\ntextarea {\n  resize: vertical;\n}\n::-webkit-search-decoration {\n  -webkit-appearance: none;\n}\n::-webkit-date-and-time-value {\n  min-height: 1lh;\n  text-align: inherit;\n}\n::-webkit-datetime-edit {\n  display: inline-flex;\n}\n::-webkit-datetime-edit-fields-wrapper {\n  padding: 0;\n}\n::-webkit-datetime-edit, ::-webkit-datetime-edit-year-field, ::-webkit-datetime-edit-month-field, ::-webkit-datetime-edit-day-field, ::-webkit-datetime-edit-hour-field, ::-webkit-datetime-edit-minute-field, ::-webkit-datetime-edit-second-field, ::-webkit-datetime-edit-millisecond-field, ::-webkit-datetime-edit-meridiem-field {\n  padding-block: 0;\n}\n::-webkit-calendar-picker-indicator {\n  line-height: 1;\n}\n:-moz-ui-invalid {\n  box-shadow: none;\n}\nbutton, input:where([type=\"button\"], [type=\"reset\"], [type=\"submit\"]), ::file-selector-button {\n  appearance: button;\n}\n::-webkit-inner-spin-button, ::-webkit-outer-spin-button {\n  height: auto;\n}\n[hidden]:where(:not([hidden=\"until-found\"])) {\n  display: none !important;\n}";
     let base_css_offset = builder.create_string(BASE_CSS);
 
@@ -317,23 +313,29 @@ fn main() {
     let buf = builder.finished_data();
     let styles_bin_path = style_dir.join("style.bin");
     fs::create_dir_all(styles_bin_path.parent().unwrap()).expect("Failed to create .dx directory");
-    match fs::write(styles_bin_path, buf) {
-        Ok(_) => {}
-        Err(e) => {
-            if let Some(code) = e.raw_os_error() {
-                if code == 1224 {
-                    println!(
-                        "cargo:warning=Skipped updating style.bin (in use / memory-mapped). Using existing file."
-                    );
+    let needs_write = match fs::read(&styles_bin_path) {
+        Ok(existing) => existing.as_slice() != buf,
+        Err(_) => true,
+    };
+    if needs_write {
+        match fs::write(&styles_bin_path, buf) {
+            Ok(_) => {}
+            Err(e) => {
+                if let Some(code) = e.raw_os_error() {
+                    if code == 1224 {
+                        let tmp = styles_bin_path.with_extension("bin.new");
+                        if fs::write(&tmp, buf).is_ok() {
+                            let _ = fs::rename(&tmp, &styles_bin_path);
+                        } else {}
+                    } else {
+                        panic!("Failed to write style.bin: {:?}", e);
+                    }
                 } else {
                     panic!("Failed to write style.bin: {:?}", e);
                 }
-            } else {
-                panic!("Failed to write style.bin: {:?}", e);
-        }
+            }
         }
     }
 
-    // Expose the resolved style.bin path to the crate so runtime code can respect overrides.
     println!("cargo:rustc-env=DX_STYLE_BIN={}", style_dir.join("style.bin").to_string_lossy());
 }
