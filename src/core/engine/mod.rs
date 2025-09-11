@@ -55,6 +55,7 @@ pub struct StyleEngine {
     pub generators: Option<Vec<GeneratorMeta>>,
     pub generator_map: Option<HashMap<String, usize>>,
     pub properties: Vec<PropertyMeta>,
+    pub property_css: String,
 }
 
 #[derive(Clone, Debug)]
@@ -160,6 +161,26 @@ impl StyleEngine {
                 })
                 .collect()
         });
+        let property_css = {
+            if properties.is_empty() {
+                String::new()
+            } else {
+                let mut out = String::new();
+                for p in &properties {
+                    use std::fmt::Write as _;
+                    let _ = writeln!(out, "@property {} {{", p.name);
+                    if !p.syntax.is_empty() {
+                        let _ = writeln!(out, "  syntax: \"{}\";", p.syntax);
+                    }
+                    let _ = writeln!(out, "  inherits: {};", if p.inherits { "true" } else { "false" });
+                    if !p.initial.is_empty() {
+                        let _ = writeln!(out, "  initial-value: {};", p.initial);
+                    }
+                    let _ = writeln!(out, "}}\n");
+                }
+                out
+            }
+        };
         Ok(Self {
             precompiled,
             _mmap: Arc::new(mmap),
@@ -170,6 +191,7 @@ impl StyleEngine {
             generators,
             generator_map,
             properties,
+            property_css,
         })
     }
 
@@ -199,27 +221,12 @@ impl StyleEngine {
             generators: None,
             generator_map: None,
             properties: Vec::new(),
+            property_css: String::new(),
         }
     }
 
     pub fn property_at_rules(&self) -> String {
-        if self.properties.is_empty() {
-            return String::new();
-        }
-        let mut out = String::new();
-        for p in &self.properties {
-            use std::fmt::Write as _;
-            let _ = writeln!(out, "@property {} {{", p.name);
-            if !p.syntax.is_empty() {
-                let _ = writeln!(out, "  syntax: \"{}\";", p.syntax);
-            }
-            let _ = writeln!(out, "  inherits: {};", if p.inherits { "true" } else { "false" });
-            if !p.initial.is_empty() {
-                let _ = writeln!(out, "  initial-value: {};", p.initial);
-            }
-            let _ = writeln!(out, "}}\n");
-        }
-        out
+        self.property_css.clone()
     }
 
     pub fn compute_css(&self, class_name: &str) -> Option<String> {
