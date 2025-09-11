@@ -1,10 +1,13 @@
-/* dx-styles */
+/* style @0.0.0 */
 @layer theme, components, utilities, base, properties;
 @layer theme {}
 @layer components {}
 @layer utilities {
   .border {
     border-width: 1px;
+  }
+  .flex {
+    display: flex;
   }
 }
 @layer base {

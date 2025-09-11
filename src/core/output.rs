@@ -9,7 +9,7 @@ static mut MMAP_THRESHOLD_BYTES: u64 = 64 * 1024;
 // Marker that denotes start of the auto-managed style region. Anything before
 // this marker is considered user-owned and will be preserved verbatim.
 // The generator only rewrites bytes after this marker.
-const MANAGED_MARKER: &str = "/* dx-styles */\n";
+const MANAGED_MARKER: &str = "/* style @0.0.0 */\n";
 
 pub enum CssBackend {
     Writer {
