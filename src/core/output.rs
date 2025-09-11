@@ -6,8 +6,30 @@ use std::time::{Duration, Instant};
 
 static mut MMAP_THRESHOLD_BYTES: u64 = 64 * 1024;
 
-const MANAGED_MARKER: &str = "/* style @0.0.0 */\n";
-const MANAGED_MARKER_PREFIX: &str = "/* style @0.0.0";
+const MANAGED_MARKER: &str = "
+/*
+  ████████   ██             ██
+ ██░░░░░░   ░██    ██   ██ ░██
+░██        ██████ ░░██ ██  ░██  █████
+░█████████░░░██░   ░░███   ░██ ██░░░██
+░░░░░░░░██  ░██     ░██    ░██░███████
+       ░██  ░██     ██     ░██░██░░░░
+ ████████   ░░██   ██      ███░░██████
+░░░░░░░░     ░░   ░░      ░░░  ░░░░░░
+Dx Style - @0.0.0
+*/\n";
+const MANAGED_MARKER_PREFIX: &str = "
+/*
+  ████████   ██             ██
+ ██░░░░░░   ░██    ██   ██ ░██
+░██        ██████ ░░██ ██  ░██  █████
+░█████████░░░██░   ░░███   ░██ ██░░░██
+░░░░░░░░██  ░██     ░██    ░██░███████
+       ░██  ░██     ██     ░██░██░░░░
+ ████████   ░░██   ██      ███░░██████
+░░░░░░░░     ░░   ░░      ░░░  ░░░░░░
+Dx Style - @0.0.0
+*/\n";
 
 pub enum CssBackend {
     Writer {
@@ -100,7 +122,6 @@ impl CssOutput {
         let managed_base = if let Some(base) = Self::ensure_marker_in_memory(&existing) {
             base
         } else {
-            // Append marker and return new logical end as managed base
             f.seek(SeekFrom::End(0))?;
             f.write_all(MANAGED_MARKER.as_bytes())?;
             logical_len += MANAGED_MARKER.len();

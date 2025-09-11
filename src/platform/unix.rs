@@ -1,15 +1,17 @@
-use libc::{c_int, c_ulong, winsize, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
+use libc::{STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO, c_int, c_ulong, winsize};
 use std::mem::zeroed;
 
 #[cfg(any(target_os = "linux", target_os = "android"))]
 static TIOCGWINSZ: c_ulong = 0x5413;
 
-#[cfg(any(target_os = "macos",
-          target_os = "ios",
-          target_os = "dragonfly",
-          target_os = "freebsd",
-          target_os = "netbsd",
-          target_os = "openbsd"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "ios",
+    target_os = "dragonfly",
+    target_os = "freebsd",
+    target_os = "netbsd",
+    target_os = "openbsd"
+))]
 static TIOCGWINSZ: c_ulong = 0x40087468;
 
 #[cfg(target_os = "solaris")]

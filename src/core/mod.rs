@@ -150,7 +150,7 @@ pub fn rebuild_styles(
         } else {
             true
         };
-    if need_full {
+        if need_full {
             let mut class_vec: Vec<String> = state_guard.class_cache.iter().cloned().collect();
             class_vec.sort();
             state_guard
@@ -255,7 +255,6 @@ pub fn rebuild_styles(
             let frag_hash = hh.finish();
             let fragment_len = fragment_vec.len();
             let utilities_offset = state_guard.utilities_offset;
-            // Only write if content actually changed (replaces old skip_write logic)
             if state_guard.last_css_hash != frag_hash {
                 state_guard.css_out.replace(&fragment_vec)?;
                 state_guard.last_css_hash = frag_hash;

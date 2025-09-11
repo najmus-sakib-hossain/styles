@@ -21,11 +21,17 @@ fn get_dimensions_any() -> Option<(usize, usize)> {
         dwMaximumWindowSize: null_coord,
     };
 
-    if unsafe { GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &mut console_data) } != 0 ||
-       unsafe { GetConsoleScreenBufferInfo(GetStdHandle(STD_INPUT_HANDLE), &mut console_data) } != 0 ||
-       unsafe { GetConsoleScreenBufferInfo(GetStdHandle(STD_ERROR_HANDLE), &mut console_data) } != 0 {
-        Some(((console_data.srWindow.Right - console_data.srWindow.Left + 1) as usize,
-              (console_data.srWindow.Bottom - console_data.srWindow.Top + 1) as usize))
+    if unsafe { GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &mut console_data) }
+        != 0
+        || unsafe { GetConsoleScreenBufferInfo(GetStdHandle(STD_INPUT_HANDLE), &mut console_data) }
+            != 0
+        || unsafe { GetConsoleScreenBufferInfo(GetStdHandle(STD_ERROR_HANDLE), &mut console_data) }
+            != 0
+    {
+        Some((
+            (console_data.srWindow.Right - console_data.srWindow.Left + 1) as usize,
+            (console_data.srWindow.Bottom - console_data.srWindow.Top + 1) as usize,
+        ))
     } else {
         None
     }
@@ -49,8 +55,10 @@ fn get_dimensions(hdl: DWORD) -> Option<(usize, usize)> {
     };
 
     if unsafe { GetConsoleScreenBufferInfo(GetStdHandle(hdl), &mut console_data) } != 0 {
-        Some(((console_data.srWindow.Right - console_data.srWindow.Left + 1) as usize,
-              (console_data.srWindow.Bottom - console_data.srWindow.Top + 1) as usize))
+        Some((
+            (console_data.srWindow.Right - console_data.srWindow.Left + 1) as usize,
+            (console_data.srWindow.Bottom - console_data.srWindow.Top + 1) as usize,
+        ))
     } else {
         None
     }

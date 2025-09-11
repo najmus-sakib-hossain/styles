@@ -75,7 +75,7 @@ fn read_toml_file<T: for<'de> Deserialize<'de>>(path: &Path) -> Option<T> {
 }
 
 fn main() {
-    let fbs_files = [".dx/style.fbs"];
+    let fbs_files = [".dx/style/style.fbs"];
     let style_dir = Path::new(".dx/style");
     let out_dir = std::env::var("OUT_DIR").unwrap();
 
@@ -297,7 +297,7 @@ fn main() {
     builder.finish(config_root, None);
 
     let buf = builder.finished_data();
-    let styles_bin_path = Path::new(".dx/style.bin");
+    let styles_bin_path = Path::new(".dx/style/style.bin");
     fs::create_dir_all(styles_bin_path.parent().unwrap()).expect("Failed to create .dx directory");
     match fs::write(styles_bin_path, buf) {
         Ok(_) => {}
@@ -308,10 +308,10 @@ fn main() {
                         "cargo:warning=Skipped updating style.bin (in use / memory-mapped). Using existing file."
                     );
                 } else {
-                    panic!("Failed to write styles.bin: {:?}", e);
+                    panic!("Failed to write style.bin: {:?}", e);
                 }
             } else {
-                panic!("Failed to write styles.bin: {:?}", e);
+                panic!("Failed to write style.bin: {:?}", e);
             }
         }
     }
