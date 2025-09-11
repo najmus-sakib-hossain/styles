@@ -1,4 +1,4 @@
-use ahash::AHashSet;
+use ahash::{AHashMap, AHashSet};
 use criterion::{Criterion, criterion_group, criterion_main};
 use std::sync::{Arc, Mutex};
 use style::{
@@ -13,7 +13,6 @@ use style::{
 fn setup_state() -> Arc<Mutex<AppState>> {
     let config = Config::load().unwrap_or_default();
 
-    // Disable memory mapping for benchmarks to avoid Windows file locking issues
     set_mmap_threshold(u64::MAX);
 
     let css_out = CssOutput::open(&config.paths.css_file).unwrap();
@@ -24,6 +23,8 @@ fn setup_state() -> Arc<Mutex<AppState>> {
         last_css_hash: 0,
         css_buffer: Vec::with_capacity(8192),
         class_list_checksum: 0,
+        css_index: AHashMap::new(),
+        utilities_offset: 0,
     }))
 }
 
@@ -35,7 +36,6 @@ fn bench_initial(c: &mut Criterion) {
             let state = setup_state();
             let cfg = Config::load().unwrap_or_default();
             let result = rebuild_styles(state, &cfg.paths.index_file, true);
-            // Ensure proper cleanup
             drop(result);
         })
     });
@@ -51,7 +51,6 @@ fn bench_hot(c: &mut Criterion) {
     group.bench_function("hot_edit", |b| {
         b.iter(|| {
             let result = rebuild_styles(state.clone(), &cfg.paths.index_file, false);
-            // Ensure proper cleanup
             drop(result);
         })
     });

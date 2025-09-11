@@ -6,8 +6,9 @@
     "description": "Orchestrate don't just own your code",
     "author": "essensefromexistence",
     "repository": "https://dx.vercel.app/essensefromexistence/dx",
-    "styles": {
-        "style": "./styles",
+    "forge": {},
+    "style": {
+        "style": "./style",
         "engine": [
             "automic",
             "enhanced",
@@ -19,6 +20,7 @@
             "claude"
         ]
     },
+    "ui": {},
     "check": {
         "lint": {},
         "format": {},
@@ -58,12 +60,13 @@
             ]
         }
     },
-    "icons": {
-        "icon": "lucide-react",
+    "icon": {
+        "icon": "@/components/icons",
+        "pack": "lucide-react",
         "variant": "default"
     },
-    "fonts": {
-        "font": "./fonts",
+    "font": {
+        "font": "./font",
         "primary": "Inter",
         "secondary": "Roboto Mono"
     },

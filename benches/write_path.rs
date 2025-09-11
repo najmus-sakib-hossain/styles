@@ -2,9 +2,7 @@ use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
 use std::fs;
 use style::core::output::{CssOutput, set_mmap_threshold};
 
-// Simple micro benchmark measuring append & replace latency with small payloads.
 fn bench_writes(c: &mut Criterion) {
-    // Force writer backend (small file) for focused latency.
     set_mmap_threshold(u64::MAX);
     let path = "target/tmp_bench.css";
     let _ = fs::remove_file(path);
@@ -15,7 +13,7 @@ fn bench_writes(c: &mut Criterion) {
     group.bench_function("append_small", |b| {
         b.iter_batched(
             || {
-                let mut out = CssOutput::open(path).unwrap();
+                let out = CssOutput::open(path).unwrap();
                 out
             },
             |mut out| {

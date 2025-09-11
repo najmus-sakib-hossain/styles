@@ -50,15 +50,9 @@ impl Default for Config {
 
 impl Config {
     pub fn resolved_style_dir(&self) -> &str {
-        self.paths
-            .style_dir
-            .as_deref()
-            .unwrap_or(".dx/style")
+        self.paths.style_dir.as_deref().unwrap_or(".dx/style")
     }
     pub fn resolved_cache_dir(&self) -> &str {
-        self.paths
-            .cache_dir
-            .as_deref()
-            .unwrap_or(".dx/cache")
+        self.paths.cache_dir.as_deref().unwrap_or(".dx/cache")
     }
 }

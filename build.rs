@@ -326,7 +326,8 @@ fn main() {
                         let tmp = styles_bin_path.with_extension("bin.new");
                         if fs::write(&tmp, buf).is_ok() {
                             let _ = fs::rename(&tmp, &styles_bin_path);
-                        } else {}
+                        } else {
+                        }
                     } else {
                         panic!("Failed to write style.bin: {:?}", e);
                     }
@@ -337,5 +338,8 @@ fn main() {
         }
     }
 
-    println!("cargo:rustc-env=DX_STYLE_BIN={}", style_dir.join("style.bin").to_string_lossy());
+    println!(
+        "cargo:rustc-env=DX_STYLE_BIN={}",
+        style_dir.join("style.bin").to_string_lossy()
+    );
 }
