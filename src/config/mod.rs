@@ -6,6 +6,10 @@ pub struct PathsConfig {
     pub html_dir: String,
     pub index_file: String,
     pub css_file: String,
+    #[serde(default)]
+    pub style_dir: Option<String>,
+    #[serde(default)]
+    pub cache_dir: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -34,10 +38,27 @@ impl Default for Config {
                 html_dir: "playgrounds/html".into(),
                 index_file: "playgrounds/html/index.html".into(),
                 css_file: "playgrounds/html/style.css".into(),
+                style_dir: Some(".dx/style".into()),
+                cache_dir: Some(".dx/cache".into()),
             },
             watch: Some(WatchConfig {
                 debounce_ms: Some(250),
             }),
         }
+    }
+}
+
+impl Config {
+    pub fn resolved_style_dir(&self) -> &str {
+        self.paths
+            .style_dir
+            .as_deref()
+            .unwrap_or(".dx/style")
+    }
+    pub fn resolved_cache_dir(&self) -> &str {
+        self.paths
+            .cache_dir
+            .as_deref()
+            .unwrap_or(".dx/cache")
     }
 }

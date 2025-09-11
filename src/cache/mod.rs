@@ -5,7 +5,13 @@ use serde::{Deserialize, Serialize};
 use std::fs::{self, File};
 use std::io::{Read, Write};
 
-const CACHE_PATH: &str = ".dx/cache/cache.json";
+fn cache_dir() -> String {
+    std::env::var("DX_CACHE_DIR").unwrap_or_else(|_| ".dx/cache".to_string())
+}
+
+fn cache_file_path() -> String {
+    format!("{}/cache.json", cache_dir())
+}
 
 #[derive(Serialize, Deserialize)]
 struct CacheDump {
@@ -17,7 +23,7 @@ pub fn load_cache() -> (AHashSet<String>, u64, u64) {
     if let Some((set, html_hash, checksum)) = snapshot::load_snapshot() {
         return (set, html_hash, checksum);
     }
-    if let Ok(mut f) = File::open(CACHE_PATH) {
+    if let Ok(mut f) = File::open(cache_file_path()) {
         let mut buf = String::new();
         if f.read_to_string(&mut buf).is_ok() {
             if let Ok(dump) = serde_json::from_str::<CacheDump>(&buf) {
@@ -46,10 +52,10 @@ pub fn save_cache(
         html_hash,
     };
     let bytes = serde_json::to_string(&dump)?.into_bytes();
-    if let Err(e) = fs::create_dir_all(".dx") {
+    if let Err(e) = fs::create_dir_all(cache_dir()) {
         return Err(Box::new(e));
     }
-    let mut f = File::create(CACHE_PATH)?;
+    let mut f = File::create(cache_file_path())?;
     f.write_all(&bytes)?;
     snapshot::save_snapshot(cache, html_hash);
     Ok(())

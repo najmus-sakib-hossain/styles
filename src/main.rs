@@ -22,6 +22,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let config = Config::load().unwrap_or_else(|_| Config::default());
 
+    unsafe {
+        std::env::set_var("DX_CACHE_DIR", config.resolved_cache_dir());
+        let style_bin = format!("{}/style.bin", config.resolved_style_dir());
+        std::env::set_var("DX_STYLE_BIN", style_bin);
+    }
+
     if !Path::new(&config.paths.css_file).exists() {
         File::create(&config.paths.css_file)?;
     }

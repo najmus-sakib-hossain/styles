@@ -4,12 +4,17 @@ use std::fs::{self, File};
 use std::hash::Hasher;
 use std::io::Write;
 
-const SNAP_PATH: &str = ".dx/cache/snapshot.bin";
+fn cache_dir() -> String {
+    std::env::var("DX_CACHE_DIR").unwrap_or_else(|_| ".dx/cache".to_string())
+}
+fn snapshot_path() -> String {
+    format!("{}/snapshot.bin", cache_dir())
+}
 const MAGIC: u32 = 0x44585334;
 const VERSION: u16 = 4;
 
 pub fn load_snapshot() -> Option<(AHashSet<String>, u64, u64)> {
-    let f = File::open(SNAP_PATH).ok()?;
+    let f = File::open(snapshot_path()).ok()?;
     let mmap = unsafe { Mmap::map(&f).ok()? };
     if mmap.len() < 4 + 2 + 4 + 8 + 8 {
         return None;
@@ -50,10 +55,10 @@ pub fn load_snapshot() -> Option<(AHashSet<String>, u64, u64)> {
 }
 
 pub fn save_snapshot(cache: &AHashSet<String>, html_hash: u64) {
-    if let Err(_) = fs::create_dir_all(".dx") {
+    if let Err(_) = fs::create_dir_all(cache_dir()) {
         return;
     }
-    if let Ok(mut f) = File::create(SNAP_PATH) {
+    if let Ok(mut f) = File::create(snapshot_path()) {
         let mut header = Vec::with_capacity(4 + 2 + 4 + 8 + 8);
         let mut checksum_hasher = ahash::AHasher::default();
         for s in cache.iter() {

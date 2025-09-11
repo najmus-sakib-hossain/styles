@@ -65,7 +65,14 @@ pub struct PropertyMeta {
 
 impl StyleEngine {
     pub fn load_from_disk() -> Result<Self, Box<dyn std::error::Error>> {
-        let path = Path::new(".dx/style/style.bin");
+        let override_path = std::env::var("DX_STYLE_BIN").ok();
+        let path_buf;
+        let path = if let Some(p) = override_path.as_deref() {
+            path_buf = std::path::PathBuf::from(p);
+            &path_buf
+        } else {
+            Path::new(".dx/style/style.bin")
+        };
         let file = File::open(path)?;
         let mmap = unsafe { Mmap::map(&file)? };
         let config = flatbuffers::root::<style_schema::Config>(&mmap)
@@ -199,11 +206,13 @@ impl StyleEngine {
     }
 
     pub fn empty() -> Self {
+        let override_path = std::env::var("DX_STYLE_BIN").ok();
+        let default_path = override_path.as_deref().unwrap_or(".dx/style/style.bin");
         let file = File::options()
             .read(true)
             .write(false)
             .create(true)
-            .open(".dx/style/style.bin")
+            .open(default_path)
             .ok();
         let mmap = file.and_then(|f| unsafe { Mmap::map(&f).ok() });
         StyleEngine {
@@ -213,7 +222,7 @@ impl StyleEngine {
                     .read(true)
                     .write(false)
                     .create(true)
-                    .open(".dx/style/style.bin")
+                    .open(default_path)
                     .unwrap();
                 unsafe { Mmap::map(&file).unwrap_or_else(|_| Mmap::map(&file).unwrap()) }
             })),

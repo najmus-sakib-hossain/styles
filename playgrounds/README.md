@@ -1,3 +1,3 @@
 Playground for testing style features.
-1. html
-2. nextjs
+1. nextjs
+2. vite

@@ -75,18 +75,36 @@ fn read_toml_file<T: for<'de> Deserialize<'de>>(path: &Path) -> Option<T> {
 }
 
 fn main() {
-    let fbs_files = [".dx/style/style.fbs"];
-    let style_dir = Path::new(".dx/style");
+    // Load config to allow overriding of style directory (paths.style_dir)
+    // Falls back to the previous hard-coded value if not provided.
+    let style_dir_str = (|| {
+        if let Ok(content) = std::fs::read_to_string(".dx/config.toml") {
+            if let Ok(value) = content.parse::<toml::Value>() {
+                if let Some(path_val) = value.get("paths").and_then(|p| p.get("style_dir")) {
+                    if let Some(s) = path_val.as_str() {
+                        if !s.trim().is_empty() {
+                            return s.replace('\\', "/");
+                        }
+                    }
+                }
+            }
+        }
+        ".dx/style".to_string()
+    })();
+    let style_dir = Path::new(&style_dir_str);
+    let fbs_path = style_dir.join("style.fbs");
+    let fbs_files_vec = vec![fbs_path.to_string_lossy().to_string()];
+    let fbs_files: Vec<&Path> = fbs_files_vec.iter().map(|s| Path::new(s)).collect();
     let out_dir = std::env::var("OUT_DIR").unwrap();
 
-    for fbs_file in fbs_files.iter() {
+    for fbs_file in &fbs_files_vec {
         println!("cargo:rerun-if-changed={}", fbs_file);
     }
     println!("cargo:rerun-if-changed={}", style_dir.display());
 
     flatc_rust::run(flatc_rust::Args {
         lang: "rust",
-        inputs: &fbs_files.iter().map(|s| Path::new(s)).collect::<Vec<_>>(),
+        inputs: &fbs_files,
         out_dir: Path::new(&out_dir),
         includes: &[Path::new("src")],
         ..Default::default()
@@ -297,7 +315,7 @@ fn main() {
     builder.finish(config_root, None);
 
     let buf = builder.finished_data();
-    let styles_bin_path = Path::new(".dx/style/style.bin");
+    let styles_bin_path = style_dir.join("style.bin");
     fs::create_dir_all(styles_bin_path.parent().unwrap()).expect("Failed to create .dx directory");
     match fs::write(styles_bin_path, buf) {
         Ok(_) => {}
@@ -312,7 +330,10 @@ fn main() {
                 }
             } else {
                 panic!("Failed to write style.bin: {:?}", e);
-            }
+        }
         }
     }
+
+    // Expose the resolved style.bin path to the crate so runtime code can respect overrides.
+    println!("cargo:rustc-env=DX_STYLE_BIN={}", style_dir.join("style.bin").to_string_lossy());
 }
