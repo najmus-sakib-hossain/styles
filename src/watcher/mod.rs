@@ -16,15 +16,6 @@ pub fn start(
     if let Ok(poll_ms_str) = std::env::var("DX_WATCH_POLL_MS") {
         if let Ok(interval_ms) = poll_ms_str.parse::<u64>() {
             let interval = Duration::from_millis(interval_ms.max(1));
-            // println!(
-            //     "{}",
-            //     format!(
-            //         "Polling {} every {}ms...",
-            //         &config.paths.index_file,
-            //         interval.as_millis()
-            //     )
-            //     .white()
-            // );
             use std::fs;
             let mut last_mtime = fs::metadata(&config.paths.index_file)
                 .and_then(|m| m.modified())
@@ -53,10 +44,6 @@ pub fn start(
             let _ = tx.send(res);
         })?;
         watcher.watch(Path::new(&config.paths.html_dir), RecursiveMode::Recursive)?;
-        // println!(
-        //     "{}",
-        //     format!("Watching (raw) {} for changes...", &config.paths.html_dir).white()
-        // );
         let mut last_trigger = Instant::now() - Duration::from_secs(1);
         let min_gap = Duration::from_millis(5);
         loop {
@@ -94,11 +81,6 @@ pub fn start(
 
     let mut debouncer = new_debouncer(Duration::from_millis(debounce_ms.max(1)), None, tx)?;
     debouncer.watch(Path::new(&config.paths.html_dir), RecursiveMode::Recursive)?;
-
-    // println!(
-    //     "{}",
-    //     format!("Watching {} for changes...", &config.paths.html_dir).white()
-    // );
 
     loop {
         let res = rx.recv();

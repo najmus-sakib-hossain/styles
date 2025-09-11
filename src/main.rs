@@ -17,8 +17,6 @@ use crate::config::Config;
 use core::{AppState, rebuild_styles, set_base_layer_present, set_properties_layer_present};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // println!("{}", "Starting DX Style core...".white());
-
     let config = Config::load().unwrap_or_else(|_| Config::default());
 
     unsafe {
