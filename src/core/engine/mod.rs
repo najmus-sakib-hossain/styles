@@ -65,7 +65,7 @@ pub struct PropertyMeta {
 
 impl StyleEngine {
     pub fn load_from_disk() -> Result<Self, Box<dyn std::error::Error>> {
-        let path = Path::new(".dx/style.bin");
+        let path = Path::new(".dx/style/style.bin");
         let file = File::open(path)?;
         let mmap = unsafe { Mmap::map(&file)? };
         let config = flatbuffers::root::<style_schema::Config>(&mmap)
@@ -203,7 +203,7 @@ impl StyleEngine {
             .read(true)
             .write(false)
             .create(true)
-            .open(".dx/style.bin")
+            .open(".dx/style/style.bin")
             .ok();
         let mmap = file.and_then(|f| unsafe { Mmap::map(&f).ok() });
         StyleEngine {
@@ -213,7 +213,7 @@ impl StyleEngine {
                     .read(true)
                     .write(false)
                     .create(true)
-                    .open(".dx/style.bin")
+                    .open(".dx/style/style.bin")
                     .unwrap();
                 unsafe { Mmap::map(&file).unwrap_or_else(|_| Mmap::map(&file).unwrap()) }
             })),

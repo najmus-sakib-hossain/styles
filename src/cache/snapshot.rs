@@ -4,7 +4,7 @@ use std::fs::{self, File};
 use std::hash::Hasher;
 use std::io::Write;
 
-const SNAP_PATH: &str = ".dx/snapshot.bin";
+const SNAP_PATH: &str = ".dx/cache/snapshot.bin";
 const MAGIC: u32 = 0x44585334;
 const VERSION: u16 = 4;
 

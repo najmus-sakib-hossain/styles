@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::fs::{self, File};
 use std::io::{Read, Write};
 
-const CACHE_PATH: &str = ".dx/cache.json";
+const CACHE_PATH: &str = ".dx/cache/cache.json";
 
 #[derive(Serialize, Deserialize)]
 struct CacheDump {
