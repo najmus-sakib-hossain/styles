@@ -48,6 +48,14 @@ table AnimationGenerator {
   template: string (required);
 }
 
+// Custom CSS Property metadata used to generate @property at-rules
+table Property {
+  name: string (key, required);
+  syntax: string;            // e.g. "<color>", "*", "<length-percentage>" etc.
+  inherits: bool;            // whether the custom property inherits
+  initial: string;           // optional initial value (may be empty string if omitted)
+}
+
 table Config {
   styles: [Style];
   generators: [Generator];
@@ -57,6 +65,7 @@ table Config {
   container_queries: [ContainerQuery];
   colors: [Color];
   animation_generators: [AnimationGenerator];
+  properties: [Property];
 }
 
 root_type Config;

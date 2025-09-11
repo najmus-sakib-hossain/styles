@@ -54,6 +54,15 @@ pub struct StyleEngine {
     pub colors: HashMap<String, String>,
     pub generators: Option<Vec<GeneratorMeta>>,
     pub generator_map: Option<HashMap<String, usize>>,
+    pub properties: Vec<PropertyMeta>,
+}
+
+#[derive(Clone, Debug)]
+pub struct PropertyMeta {
+    pub name: String,
+    pub syntax: String,
+    pub inherits: bool,
+    pub initial: String, // may be empty
 }
 
 impl StyleEngine {
@@ -140,6 +149,17 @@ impl StyleEngine {
             }
             m
         });
+        let properties = config.properties().map_or_else(Vec::new, |plist| {
+            plist
+                .iter()
+                .map(|p| PropertyMeta {
+                    name: p.name().to_string(),
+                    syntax: p.syntax().unwrap_or("").to_string(),
+                    inherits: p.inherits(),
+                    initial: p.initial().unwrap_or("").to_string(),
+                })
+                .collect()
+        });
         Ok(Self {
             precompiled,
             _mmap: Arc::new(mmap),
@@ -149,6 +169,7 @@ impl StyleEngine {
             colors,
             generators,
             generator_map,
+            properties,
         })
     }
 
@@ -177,7 +198,28 @@ impl StyleEngine {
             colors: HashMap::new(),
             generators: None,
             generator_map: None,
+            properties: Vec::new(),
         }
+    }
+
+    pub fn property_at_rules(&self) -> String {
+        if self.properties.is_empty() {
+            return String::new();
+        }
+        let mut out = String::new();
+        for p in &self.properties {
+            use std::fmt::Write as _;
+            let _ = writeln!(out, "@property {} {{", p.name);
+            if !p.syntax.is_empty() {
+                let _ = writeln!(out, "  syntax: \"{}\";", p.syntax);
+            }
+            let _ = writeln!(out, "  inherits: {};", if p.inherits { "true" } else { "false" });
+            if !p.initial.is_empty() {
+                let _ = writeln!(out, "  initial-value: {};", p.initial);
+            }
+            let _ = writeln!(out, "}}\n");
+        }
+        out
     }
 
     pub fn compute_css(&self, class_name: &str) -> Option<String> {

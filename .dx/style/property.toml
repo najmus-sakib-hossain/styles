@@ -1,0 +1,24 @@
+#############################
+# Custom CSS Properties Metadata
+#
+# Define custom properties that should be emitted as @property at-rules.
+# These improve animation/interpolation & validation for CSS variables.
+#
+# Format:
+# [properties]
+# "--var-name" = { syntax = "<color>", inherits = false, initial = "#0000" }
+#
+# Fields:
+#  syntax   : Type descriptor per CSS Properties & Values API (e.g. "*", "<color>", "<length>")
+#  inherits : true/false (default false if omitted)
+#  initial  : Optional initial-value (omit to skip line)
+#
+# NOTE: Keys MUST include the leading --.
+#############################
+
+[properties]
+"--brand-hue" = { syntax = "<angle>", inherits = false, initial = "0deg" }
+"--brand-accent" = { syntax = "<color>", inherits = false, initial = "#0000" }
+"--spacing-scale" = { syntax = "<number>", inherits = false, initial = "1" }
+"--easing-fn" = { syntax = "*", inherits = false, initial = "cubic-bezier(0.4,0,0.2,1)" }
+"--dynamic-opacity" = { syntax = "<percentage>", inherits = false, initial = "100%" }

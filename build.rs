@@ -51,6 +51,20 @@ struct AnimationGeneratorsConfig {
     animation_generators: HashMap<String, String>,
 }
 
+#[derive(Deserialize, Debug)]
+struct PropertyMetaConfig {
+    syntax: String,
+    #[serde(default)]
+    inherits: Option<bool>,
+    #[serde(default, rename = "initial")]
+    initial_value: Option<String>,
+}
+
+#[derive(Deserialize, Debug)]
+struct PropertiesConfig {
+    properties: HashMap<String, PropertyMetaConfig>,
+}
+
 fn read_toml_file<T: for<'de> Deserialize<'de>>(path: &Path) -> Option<T> {
     if path.exists() {
         let content = fs::read_to_string(path).ok()?;
@@ -105,6 +119,9 @@ fn main() {
         read_toml_file::<AnimationGeneratorsConfig>(&style_dir.join("animation_generators.toml"))
             .map(|c| c.animation_generators)
             .unwrap_or_default();
+    let properties = read_toml_file::<PropertiesConfig>(&style_dir.join("property.toml"))
+        .map(|c| c.properties)
+        .unwrap_or_default();
 
     let mut builder = FlatBufferBuilder::new();
 
@@ -244,6 +261,22 @@ fn main() {
     let cq_vec = builder.create_vector(&cq_offsets);
     let colors_vec = builder.create_vector(&color_offsets);
     let anim_gen_vec = builder.create_vector(&anim_gen_offsets);
+    // Serialize properties
+    let mut property_offsets = Vec::new();
+    for (name, meta) in properties {
+        let name_offset = builder.create_string(&name);
+        let syntax_offset = builder.create_string(&meta.syntax);
+        let initial_offset = builder.create_string(meta.initial_value.as_deref().unwrap_or(""));
+        let inherits_flag = meta.inherits.unwrap_or(false);
+        let table_wip = builder.start_table();
+        builder.push_slot(4, name_offset, WIPOffset::new(0));
+        builder.push_slot(6, syntax_offset, WIPOffset::new(0));
+        builder.push_slot(8, inherits_flag, false);
+        builder.push_slot(10, initial_offset, WIPOffset::new(0));
+        let prop_offset = builder.end_table(table_wip);
+        property_offsets.push(prop_offset);
+    }
+    let properties_vec = builder.create_vector(&property_offsets);
 
     let table_wip = builder.start_table();
     builder.push_slot(4, styles_vec, WIPOffset::new(0));
@@ -254,6 +287,7 @@ fn main() {
     builder.push_slot(14, cq_vec, WIPOffset::new(0));
     builder.push_slot(16, colors_vec, WIPOffset::new(0));
     builder.push_slot(18, anim_gen_vec, WIPOffset::new(0));
+    builder.push_slot(20, properties_vec, WIPOffset::new(0));
     let config_root = builder.end_table(table_wip);
 
     builder.finish(config_root, None);
