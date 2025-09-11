@@ -135,41 +135,80 @@ pub fn rebuild_styles(
                 // Layer preamble always at top
                 state_guard.css_buffer.extend_from_slice(b"@layer theme, components, utilities, base, properties;\n");
 
-                // Theme layer (variables)
-                {
-                    let engine = AppState::engine();
-                    let (root_vars, dark_vars) = engine.generate_color_vars_for(class_vec.iter().collect::<Vec<_>>().iter().map(|s| *s));
-                    state_guard.css_buffer.extend_from_slice(b"@layer theme {\n");
-                    if !root_vars.is_empty() { state_guard.css_buffer.extend_from_slice(root_vars.as_bytes()); }
-                    if !dark_vars.is_empty() { state_guard.css_buffer.extend_from_slice(dark_vars.as_bytes()); }
-                    state_guard.css_buffer.extend_from_slice(b"}\n");
-                }
-                // Utilities layer for all classes with indentation
-                state_guard.css_buffer.extend_from_slice(b"@layer utilities {\n");
-                {
-                    let len_before = state_guard.css_buffer.len();
-                    generator::generate_class_rules_only(&mut state_guard.css_buffer, class_vec.iter());
-                    // Post-process just added chunk to indent each line by two spaces
-                    let added = &mut state_guard.css_buffer[len_before..];
-                    // Convert to String temporarily
-                    if let Ok(mut segment) = String::from_utf8(added.to_vec()) {
-                        let mut out = String::with_capacity(segment.len() + 64);
-                        for line in segment.lines() {
-                            if line.trim().is_empty() { continue; }
-                            // Ensure block lines already contain their internal indentation; we add 2 spaces prefix
-                            out.push_str("  ");
-                            out.push_str(line);
-                            out.push('\n');
+                // Helper to write a layer block with optional body (indented); empty -> one-liner {}
+                fn write_layer(buf: &mut Vec<u8>, name: &str, body: &str) {
+                    let trimmed = body.trim();
+                    if trimmed.is_empty() {
+                        buf.extend_from_slice(format!("@layer {} {{}}\n", name).as_bytes());
+                    } else {
+                        buf.extend_from_slice(format!("@layer {} {{\n", name).as_bytes());
+                        for line in trimmed.lines() {
+                            if line.is_empty() { continue; }
+                            buf.extend_from_slice(b"  ");
+                            buf.extend_from_slice(line.as_bytes());
+                            buf.push(b'\n');
                         }
-                        state_guard.css_buffer.truncate(len_before);
-                        state_guard.css_buffer.extend_from_slice(out.as_bytes());
+                        buf.extend_from_slice(b"}\n");
                     }
                 }
-                state_guard.css_buffer.extend_from_slice(b"}\n");
+                // Theme layer (variables)
+                let (root_vars, dark_vars) = {
+                    let engine = AppState::engine();
+                    engine.generate_color_vars_for(class_vec.iter().collect::<Vec<_>>().iter().map(|s| *s))
+                };
+                let mut theme_body = String::new();
+                if !root_vars.is_empty() { theme_body.push_str(root_vars.trim_end()); theme_body.push('\n'); }
+                if !dark_vars.is_empty() { theme_body.push_str(dark_vars.trim_end()); theme_body.push('\n'); }
+                write_layer(&mut state_guard.css_buffer, "theme", &theme_body);
+                // Components layer currently empty placeholder
+                write_layer(&mut state_guard.css_buffer, "components", "");
+                // Utilities layer for all classes with indentation
+                {
+                    let mut util_buf = Vec::new();
+                    generator::generate_class_rules_only(&mut util_buf, class_vec.iter());
+                    let mut util_body = String::new();
+                    for line in String::from_utf8_lossy(&util_buf).lines() {
+                        if line.trim().is_empty() { continue; }
+                        util_body.push_str(line);
+                        util_body.push('\n');
+                    }
+                    write_layer(&mut state_guard.css_buffer, "utilities", &util_body);
+                }
                 // Base layer after utilities per requested order
-                if !base_layer_present() { if let Some(base_raw) = AppState::engine().base_layer_raw.as_ref() { if !base_raw.is_empty() { state_guard.css_buffer.extend_from_slice(b"@layer base {\n"); state_guard.css_buffer.extend_from_slice(base_raw.trim_end().as_bytes()); if !base_raw.ends_with('\n') { state_guard.css_buffer.push(b'\n'); } state_guard.css_buffer.extend_from_slice(b"}\n"); set_base_layer_present(); } } }
+                if !base_layer_present() {
+                    if let Some(base_raw) = AppState::engine().base_layer_raw.as_ref() {
+                        if !base_raw.is_empty() {
+                            // Indent lines by two spaces inside layer; base_raw already has its own indentation
+                            let mut base_body = String::new();
+                            for line in base_raw.trim_end().lines() {
+                                base_body.push_str(line);
+                                base_body.push('\n');
+                            }
+                            write_layer(&mut state_guard.css_buffer, "base", &base_body);
+                            set_base_layer_present();
+                        } else {
+                            write_layer(&mut state_guard.css_buffer, "base", "");
+                        }
+                    } else {
+                        write_layer(&mut state_guard.css_buffer, "base", "");
+                    }
+                }
                 // Properties layer last
-                if !properties_layer_present() { let props = AppState::engine().property_at_rules(); if !props.is_empty() { state_guard.css_buffer.extend_from_slice(b"@layer properties {\n"); state_guard.css_buffer.extend_from_slice(props.as_bytes()); state_guard.css_buffer.extend_from_slice(b"}\n"); set_properties_layer_present(); } }
+                if !properties_layer_present() {
+                    let props = AppState::engine().property_at_rules();
+                    if props.is_empty() {
+                        write_layer(&mut state_guard.css_buffer, "properties", "");
+                    } else {
+                        let mut prop_body = String::new();
+                        for line in props.lines() {
+                            if line.is_empty() { continue; }
+                            prop_body.push_str(line);
+                            prop_body.push('\n');
+                        }
+                        write_layer(&mut state_guard.css_buffer, "properties", &prop_body);
+                        set_properties_layer_present();
+                    }
+                }
                 (true, Vec::new())
             } else {
                 let local_added: Vec<String> = added.iter().cloned().collect();
