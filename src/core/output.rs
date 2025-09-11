@@ -10,6 +10,7 @@ static mut MMAP_THRESHOLD_BYTES: u64 = 64 * 1024;
 // this marker is considered user-owned and will be preserved verbatim.
 // The generator only rewrites bytes after this marker.
 const MANAGED_MARKER: &str = "/* style @0.0.0 */\n";
+const MANAGED_MARKER_PREFIX: &str = "/* style @0.0.0"; // used to detect truncated marker
 
 pub enum CssBackend {
     Writer {
@@ -63,6 +64,28 @@ impl CssOutput {
             .open(path)?;
         let mut existing = Vec::new();
         f.read_to_end(&mut existing)?;
+        // Repair scenario: truncated marker present without closing */ which would comment out entire file.
+        if !existing.is_empty() && Self::ensure_marker_in_memory(&existing).is_none() {
+            if let Some(prefix_pos) = twoway::find_bytes(&existing, MANAGED_MARKER_PREFIX.as_bytes()) {
+                // If the bytes following prefix don't contain '*/' before newline/end, patch it.
+                let after = &existing[prefix_pos..];
+                let has_close = after.windows(2).position(|w| w == b"*/");
+                if has_close.is_none() {
+                    // Build repaired buffer: everything before prefix + full marker + remainder after original prefix segment removed
+                    let mut repaired = existing[..prefix_pos].to_vec();
+                    repaired.extend_from_slice(MANAGED_MARKER.as_bytes());
+                    // Skip original partial marker bytes until first newline (if any)
+                    if let Some(nl) = after.iter().position(|b| *b == b'\n') {
+                        repaired.extend_from_slice(&after[nl+1..]);
+                    }
+                    existing = repaired;
+                    f.set_len(0)?;
+                    f.seek(SeekFrom::Start(0))?;
+                    f.write_all(&existing)?;
+                    f.flush()?;
+                }
+            }
+        }
         // Fixup: if file has leading NULs (legacy bug) and no marker, strip them.
         if Self::ensure_marker_in_memory(&existing).is_none() {
             if let Some(first_non_zero) = existing.iter().position(|b| *b != 0) {
@@ -122,6 +145,46 @@ impl CssOutput {
         // If all zeros and no marker treat as empty
         let all_zeros = !tmp.is_empty() && tmp.iter().all(|b| *b == 0);
         if all_zeros { logical_len = 0; }
+        // Trim leading NUL bytes (legacy bug) before marker if present.
+        if !all_zeros && !tmp.is_empty() {
+            if let Some(first_non_zero) = tmp.iter().position(|b| *b != 0) {
+                if first_non_zero > 0 {
+                    let new_len = tmp.len() - first_non_zero;
+                    let mut new_buf = Vec::with_capacity(new_len);
+                    new_buf.extend_from_slice(&tmp[first_non_zero..]);
+                    file.set_len(new_len as u64)?;
+                    // Remap with new size (expand to power-of-two capacity if needed)
+                    let cap = (new_len.next_power_of_two()).max(4096) as u64;
+                    if cap > new_len as u64 { file.set_len(cap)?; }
+                    let mut mmap_temp = unsafe { MmapMut::map_mut(&file)? };
+                    mmap_temp[..new_len].copy_from_slice(&new_buf);
+                    mmap_temp.flush()?;
+                    tmp = new_buf;
+                    logical_len = new_len;
+                }
+            }
+        }
+        // Repair truncated marker for mmap path
+        if logical_len > 0 && Self::ensure_marker_in_memory(&tmp).is_none() {
+            if let Some(prefix_pos) = twoway::find_bytes(&tmp, MANAGED_MARKER_PREFIX.as_bytes()) {
+                let after = &tmp[prefix_pos..];
+                let has_close = after.windows(2).position(|w| w == b"*/");
+                if has_close.is_none() {
+                    let mut repaired = tmp[..prefix_pos].to_vec();
+                    repaired.extend_from_slice(MANAGED_MARKER.as_bytes());
+                    if let Some(nl) = after.iter().position(|b| *b == b'\n') {
+                        repaired.extend_from_slice(&after[nl+1..]);
+                    }
+                    let needed = repaired.len();
+                    if needed > file.metadata()?.len() as usize { file.set_len((needed.next_power_of_two()).max(4096) as u64)?; }
+                    let mut mmap_temp = unsafe { MmapMut::map_mut(&file)? };
+                    mmap_temp[..repaired.len()].copy_from_slice(&repaired);
+                    mmap_temp.flush()?;
+                    logical_len = repaired.len();
+                    tmp = repaired;
+                }
+            }
+        }
         let managed_base = if let Some(base) = if logical_len > 0 { Self::ensure_marker_in_memory(&tmp) } else { None } {
             base
         } else {
@@ -249,6 +312,60 @@ impl CssOutput {
             CssBackend::Mmap { mmap, dirty, last_flush, .. } => {
                 if *dirty { mmap.flush()?; *dirty = false; }
                 *last_flush = Instant::now();
+            }
+        }
+        Ok(())
+    }
+
+    // Append bytes inside the final block by temporarily removing the trailing "}\n".
+    // Assumes the managed region currently ends with b"}\n" belonging to the last layer block (utilities).
+    // Returns the absolute offset (relative to managed region start) where new bytes began.
+    pub fn append_inside_final_block(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+        if bytes.is_empty() { return Ok(self.current_len()); }
+        match &mut self.backend {
+            CssBackend::Writer { writer, logical_len, dirty, .. } => {
+                if *logical_len < 2 { return Err(std::io::Error::new(std::io::ErrorKind::Other, "file too short")); }
+                // Read last 2 bytes to confirm pattern (best effort: just trust structure)
+                let insert_pos = *logical_len - 2; // before '}\n'
+                writer.seek(SeekFrom::Start(insert_pos as u64))?;
+                writer.write_all(bytes)?;
+                writer.write_all(b"}\n")?; // re-close block
+                *logical_len = insert_pos + bytes.len() + 2;
+                *dirty = true;
+                Ok(insert_pos - self.managed_base)
+            }
+            CssBackend::Mmap { file, mmap, logical_len, dirty, .. } => {
+                if *logical_len < 2 { return Err(std::io::Error::new(std::io::ErrorKind::Other, "file too short")); }
+                let insert_pos = *logical_len - 2;
+                let needed = insert_pos + bytes.len() + 2;
+                if mmap.len() < needed {
+                    let new_len = (needed.next_power_of_two()).max(4096);
+                    file.set_len(new_len as u64)?;
+                    *mmap = unsafe { MmapMut::map_mut(&*file)? };
+                }
+                mmap[insert_pos..insert_pos + bytes.len()].copy_from_slice(bytes);
+                mmap[insert_pos + bytes.len()..insert_pos + bytes.len() + 2].copy_from_slice(b"}\n");
+                *logical_len = insert_pos + bytes.len() + 2;
+                *dirty = true;
+                Ok(insert_pos - self.managed_base)
+            }
+        }
+    }
+
+    // Truncate managed region to given relative length (from start of managed region).
+    pub fn truncate_managed_to(&mut self, rel_len: usize) -> std::io::Result<()> {
+        match &mut self.backend {
+            CssBackend::Writer { writer, logical_len, .. } => {
+                let new_total = self.managed_base + rel_len;
+                writer.get_mut().set_len(new_total as u64)?;
+                writer.seek(SeekFrom::Start(new_total as u64))?;
+                *logical_len = new_total;
+            }
+            CssBackend::Mmap { file, mmap, logical_len, .. } => {
+                let new_total = self.managed_base + rel_len;
+                file.set_len(new_total as u64)?;
+                *mmap = unsafe { MmapMut::map_mut(&*file)? };
+                *logical_len = new_total;
             }
         }
         Ok(())

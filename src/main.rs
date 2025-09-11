@@ -82,6 +82,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         css_buffer: Vec::with_capacity(8192),
         class_list_checksum,
         css_index,
+    utilities_offset: 0,
     }));
 
     if std::env::var("DX_DUMP_STATE_ON_START").is_ok() {
