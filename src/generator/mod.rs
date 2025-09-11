@@ -62,7 +62,9 @@ where
         for class in classes {
             if let Some(css) = engine.css_for_class(class) {
                 buf.extend_from_slice(css.as_bytes());
-                if !css.ends_with('\n') { buf.push(b'\n'); }
+                if !css.ends_with('\n') {
+                    buf.push(b'\n');
+                }
             } else {
                 buf.push(b'.');
                 escaped.clear();

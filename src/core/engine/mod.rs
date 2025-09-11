@@ -12,7 +12,6 @@ pub use states::apply_wrappers_and_states;
 #[allow(dead_code)]
 pub fn init() {}
 
-
 use memmap2::Mmap;
 use std::collections::HashMap;
 use std::fs::File;
@@ -170,7 +169,11 @@ impl StyleEngine {
                     if !p.syntax.is_empty() {
                         let _ = writeln!(out, "  syntax: \"{}\";", p.syntax);
                     }
-                    let _ = writeln!(out, "  inherits: {};", if p.inherits { "true" } else { "false" });
+                    let _ = writeln!(
+                        out,
+                        "  inherits: {};",
+                        if p.inherits { "true" } else { "false" }
+                    );
                     if !p.initial.is_empty() {
                         let _ = writeln!(out, "  initial-value: {};", p.initial);
                     }
@@ -314,17 +317,23 @@ impl StyleEngine {
         I: IntoIterator<Item = &'a String>,
     {
         use std::collections::BTreeSet;
-    let mut needed: BTreeSet<&str> = BTreeSet::new();
+        let mut needed: BTreeSet<&str> = BTreeSet::new();
         for c in classes.into_iter() {
             let base = c.rsplit(':').next().unwrap_or(c);
             if let Some(name) = base.strip_prefix("bg-") {
-                if self.colors.contains_key(name) { needed.insert(name); }
+                if self.colors.contains_key(name) {
+                    needed.insert(name);
+                }
             }
             if let Some(name) = base.strip_prefix("text-") {
-                if self.colors.contains_key(name) { needed.insert(name); }
+                if self.colors.contains_key(name) {
+                    needed.insert(name);
+                }
             }
         }
-    if needed.is_empty() { return (String::new(), String::new()); }
+        if needed.is_empty() {
+            return (String::new(), String::new());
+        }
         let mut root = String::from(":root {\n");
         let mut dark = String::from(".dark {\n");
         for name in needed {

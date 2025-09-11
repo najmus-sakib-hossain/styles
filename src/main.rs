@@ -59,12 +59,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let class_list_checksum = preloaded_checksum;
     let mut css_index = ahash::AHashMap::with_capacity(256);
     if let Ok(existing) = std::fs::read(&config.paths.css_file) {
-        if existing.windows(11).any(|w| w == b"@layer base") { set_base_layer_present(); }
-        if existing.windows(18).any(|w| w == b"@layer properties") { set_properties_layer_present(); }
+        if existing.windows(11).any(|w| w == b"@layer base") {
+            set_base_layer_present();
+        }
+        if existing.windows(18).any(|w| w == b"@layer properties") {
+            set_properties_layer_present();
+        }
         let mut offset = 0usize;
         for line in existing.split(|b| *b == b'\n') {
             let trimmed = {
-                let mut i=0; while i < line.len() && (line[i]==b' '|| line[i]==b'\t') { i+=1; } &line[i..]
+                let mut i = 0;
+                while i < line.len() && (line[i] == b' ' || line[i] == b'\t') {
+                    i += 1;
+                }
+                &line[i..]
             };
             if trimmed.starts_with(b".") {
                 if let Some(brace) = trimmed.iter().position(|c| *c == b'{') {
@@ -72,8 +80,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let len = line.len() + 1;
                     css_index.insert(cls, (offset, len));
                     offset += len;
-                } else { offset += line.len() + 1; }
-            } else { offset += line.len() + 1; }
+                } else {
+                    offset += line.len() + 1;
+                }
+            } else {
+                offset += line.len() + 1;
+            }
         }
     }
     let app_state = Arc::new(Mutex::new(AppState {
@@ -84,7 +96,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         css_buffer: Vec::with_capacity(8192),
         class_list_checksum,
         css_index,
-    utilities_offset: 0,
+        utilities_offset: 0,
     }));
 
     if std::env::var("DX_DUMP_STATE_ON_START").is_ok() {
@@ -103,4 +115,3 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
-

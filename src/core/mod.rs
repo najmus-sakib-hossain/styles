@@ -10,19 +10,27 @@ use std::hash::Hasher;
 mod color;
 pub mod output;
 use output::CssOutput;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
-use std::sync::atomic::{AtomicBool, Ordering};
 
 static BASE_LAYER_PRESENT: AtomicBool = AtomicBool::new(false);
-pub fn set_base_layer_present() { BASE_LAYER_PRESENT.store(true, Ordering::Relaxed); }
+pub fn set_base_layer_present() {
+    BASE_LAYER_PRESENT.store(true, Ordering::Relaxed);
+}
 #[allow(dead_code)]
-fn base_layer_present() -> bool { BASE_LAYER_PRESENT.load(Ordering::Relaxed) }
+fn base_layer_present() -> bool {
+    BASE_LAYER_PRESENT.load(Ordering::Relaxed)
+}
 
 static PROPERTIES_LAYER_PRESENT: AtomicBool = AtomicBool::new(false);
-pub fn set_properties_layer_present() { PROPERTIES_LAYER_PRESENT.store(true, Ordering::Relaxed); }
+pub fn set_properties_layer_present() {
+    PROPERTIES_LAYER_PRESENT.store(true, Ordering::Relaxed);
+}
 #[allow(dead_code)]
-pub fn properties_layer_present() -> bool { PROPERTIES_LAYER_PRESENT.load(Ordering::Relaxed) }
+pub fn properties_layer_present() -> bool {
+    PROPERTIES_LAYER_PRESENT.load(Ordering::Relaxed)
+}
 
 static FIRST_LOG_DONE: AtomicBool = AtomicBool::new(false);
 
@@ -93,7 +101,9 @@ pub fn rebuild_styles(
     if added.is_empty() && removed.is_empty() && !css_incomplete {
         let mut state_guard = state.lock().unwrap();
         let mut h = AHasher::default();
-        for c in &state_guard.class_cache { h.write(c.as_bytes()); }
+        for c in &state_guard.class_cache {
+            h.write(c.as_bytes());
+        }
         state_guard.class_list_checksum = h.finish();
         state_guard.html_hash = new_html_hash;
         return Ok(());
@@ -126,14 +136,26 @@ pub fn rebuild_styles(
         };
         let removed_has_color = removed.iter().any(|c| is_color(c));
         let added_has_color = added.iter().any(|c| is_color(c));
-        let missing_index_for_removed = removed.iter().any(|c| !state_guard.css_index.contains_key(c));
+        let missing_index_for_removed = removed
+            .iter()
+            .any(|c| !state_guard.css_index.contains_key(c));
         let only_additions = !added.is_empty() && removed.is_empty();
-    let only_removals = !removed.is_empty() && added.is_empty();
-    let need_full = if is_initial_run { true } else if only_additions { added_has_color } else if only_removals { removed_has_color || missing_index_for_removed } else { true };
+        let only_removals = !removed.is_empty() && added.is_empty();
+        let need_full = if is_initial_run {
+            true
+        } else if only_additions {
+            added_has_color
+        } else if only_removals {
+            removed_has_color || missing_index_for_removed
+        } else {
+            true
+        };
         if need_full {
             let mut class_vec: Vec<String> = state_guard.class_cache.iter().cloned().collect();
             class_vec.sort();
-            state_guard.css_buffer.extend_from_slice(b"@layer theme, components, utilities, base, properties;\n");
+            state_guard
+                .css_buffer
+                .extend_from_slice(b"@layer theme, components, utilities, base, properties;\n");
             fn write_layer(buf: &mut Vec<u8>, name: &str, body: &str) {
                 let trimmed = body.trim();
                 if trimmed.is_empty() {
@@ -141,7 +163,9 @@ pub fn rebuild_styles(
                 } else {
                     buf.extend_from_slice(format!("@layer {} {{\n", name).as_bytes());
                     for line in trimmed.lines() {
-                        if line.is_empty() { continue; }
+                        if line.is_empty() {
+                            continue;
+                        }
                         buf.extend_from_slice(b"  ");
                         buf.extend_from_slice(line.as_bytes());
                         buf.push(b'\n');
@@ -151,27 +175,52 @@ pub fn rebuild_styles(
             }
             let (root_vars, dark_vars) = {
                 let engine = AppState::engine();
-                engine.generate_color_vars_for(class_vec.iter().collect::<Vec<_>>().iter().map(|s| *s))
+                engine.generate_color_vars_for(
+                    class_vec.iter().collect::<Vec<_>>().iter().map(|s| *s),
+                )
             };
             let mut theme_body = String::new();
-            if !root_vars.is_empty() { theme_body.push_str(root_vars.trim_end()); theme_body.push('\n'); }
-            if !dark_vars.is_empty() { theme_body.push_str(dark_vars.trim_end()); theme_body.push('\n'); }
+            if !root_vars.is_empty() {
+                theme_body.push_str(root_vars.trim_end());
+                theme_body.push('\n');
+            }
+            if !dark_vars.is_empty() {
+                theme_body.push_str(dark_vars.trim_end());
+                theme_body.push('\n');
+            }
             write_layer(&mut state_guard.css_buffer, "theme", &theme_body);
             write_layer(&mut state_guard.css_buffer, "components", "");
             if let Some(base_raw) = AppState::engine().base_layer_raw.as_ref() {
                 if !base_raw.is_empty() {
                     let mut base_body = String::new();
-                    for line in base_raw.trim_end().lines() { if line.trim().is_empty() { continue; } base_body.push_str(line); base_body.push('\n'); }
+                    for line in base_raw.trim_end().lines() {
+                        if line.trim().is_empty() {
+                            continue;
+                        }
+                        base_body.push_str(line);
+                        base_body.push('\n');
+                    }
                     write_layer(&mut state_guard.css_buffer, "base", &base_body);
-                } else { write_layer(&mut state_guard.css_buffer, "base", ""); }
-            } else { write_layer(&mut state_guard.css_buffer, "base", ""); }
+                } else {
+                    write_layer(&mut state_guard.css_buffer, "base", "");
+                }
+            } else {
+                write_layer(&mut state_guard.css_buffer, "base", "");
+            }
             set_base_layer_present();
             {
                 let props = AppState::engine().property_at_rules();
-                if props.is_empty() { write_layer(&mut state_guard.css_buffer, "properties", ""); }
-                else {
+                if props.is_empty() {
+                    write_layer(&mut state_guard.css_buffer, "properties", "");
+                } else {
                     let mut prop_body = String::new();
-                    for line in props.lines() { if line.is_empty() { continue; } prop_body.push_str(line); prop_body.push('\n'); }
+                    for line in props.lines() {
+                        if line.is_empty() {
+                            continue;
+                        }
+                        prop_body.push_str(line);
+                        prop_body.push('\n');
+                    }
                     write_layer(&mut state_guard.css_buffer, "properties", &prop_body);
                 }
                 set_properties_layer_present();
@@ -179,45 +228,118 @@ pub fn rebuild_styles(
             let mut util_buf = Vec::new();
             generator::generate_class_rules_only(&mut util_buf, class_vec.iter());
             let mut util_body = String::new();
-            for line in String::from_utf8_lossy(&util_buf).lines() { if line.trim().is_empty() { continue; } util_body.push_str(line); util_body.push('\n'); }
-            state_guard.css_buffer.extend_from_slice(b"@layer utilities {\n");
+            for line in String::from_utf8_lossy(&util_buf).lines() {
+                if line.trim().is_empty() {
+                    continue;
+                }
+                util_body.push_str(line);
+                util_body.push('\n');
+            }
+            state_guard
+                .css_buffer
+                .extend_from_slice(b"@layer utilities {\n");
             state_guard.utilities_offset = state_guard.css_buffer.len();
-            for line in util_body.lines() { if line.is_empty() { continue; } state_guard.css_buffer.extend_from_slice(b"  "); state_guard.css_buffer.extend_from_slice(line.as_bytes()); state_guard.css_buffer.push(b'\n'); }
+            for line in util_body.lines() {
+                if line.is_empty() {
+                    continue;
+                }
+                state_guard.css_buffer.extend_from_slice(b"  ");
+                state_guard.css_buffer.extend_from_slice(line.as_bytes());
+                state_guard.css_buffer.push(b'\n');
+            }
             state_guard.css_buffer.extend_from_slice(b"}\n");
             let fragment_vec = state_guard.css_buffer.clone();
-            use ahash::AHasher; let mut hh = AHasher::default(); hh.write(&fragment_vec); let frag_hash = hh.finish();
+            use ahash::AHasher;
+            let mut hh = AHasher::default();
+            hh.write(&fragment_vec);
+            let frag_hash = hh.finish();
             let fragment_len = fragment_vec.len();
             let utilities_offset = state_guard.utilities_offset;
-            if !skip_write { state_guard.css_out.replace(&fragment_vec)?; state_guard.last_css_hash = frag_hash; }
+            if !skip_write {
+                state_guard.css_out.replace(&fragment_vec)?;
+                state_guard.last_css_hash = frag_hash;
+            }
             state_guard.css_index.clear();
-            let body_slice: Vec<u8> = fragment_vec[utilities_offset..fragment_len-2].to_vec();
+            let body_slice: Vec<u8> = fragment_vec[utilities_offset..fragment_len - 2].to_vec();
             let mut rel = 0usize;
-            for line in body_slice.split(|b| *b==b'\n') {
-                if line.is_empty() { continue; }
-                let trimmed = { let mut i=0; while i<line.len() && (line[i]==b' '||line[i]==b'\t'){i+=1;} &line[i..] };
-                if trimmed.starts_with(b".") { if let Some(br) = trimmed.iter().position(|c| *c==b'{') { let name=String::from_utf8_lossy(&trimmed[1..br]).to_string(); let len=line.len()+1; state_guard.css_index.insert(name,(rel,len)); rel+=len; } else { rel+= line.len()+1; } }
-                else { rel+= line.len()+1; }
+            for line in body_slice.split(|b| *b == b'\n') {
+                if line.is_empty() {
+                    continue;
+                }
+                let trimmed = {
+                    let mut i = 0;
+                    while i < line.len() && (line[i] == b' ' || line[i] == b'\t') {
+                        i += 1;
+                    }
+                    &line[i..]
+                };
+                if trimmed.starts_with(b".") {
+                    if let Some(br) = trimmed.iter().position(|c| *c == b'{') {
+                        let name = String::from_utf8_lossy(&trimmed[1..br]).to_string();
+                        let len = line.len() + 1;
+                        state_guard.css_index.insert(name, (rel, len));
+                        rel += len;
+                    } else {
+                        rel += line.len() + 1;
+                    }
+                } else {
+                    rel += line.len() + 1;
+                }
             }
             state_guard.css_out.flush_now()?;
         } else if only_additions {
             generator::generate_class_rules_only(&mut state_guard.css_buffer, added.iter());
             if !state_guard.css_buffer.is_empty() {
                 let raw = std::mem::take(&mut state_guard.css_buffer);
-                let mut block = Vec::with_capacity(raw.len()+32);
-                for line in raw.split(|b| *b==b'\n') { if line.is_empty() { continue; } block.extend_from_slice(b"  "); block.extend_from_slice(line); block.push(b'\n'); }
+                let mut block = Vec::with_capacity(raw.len() + 32);
+                for line in raw.split(|b| *b == b'\n') {
+                    if line.is_empty() {
+                        continue;
+                    }
+                    block.extend_from_slice(b"  ");
+                    block.extend_from_slice(line);
+                    block.push(b'\n');
+                }
                 let start_rel = state_guard.css_out.append_inside_final_block(&block)?;
                 let mut rel_off = start_rel - state_guard.utilities_offset;
-                for line in block.split(|b| *b==b'\n') { if line.is_empty() { continue; } let trimmed={let mut i=0; while i<line.len() && (line[i]==b' '||line[i]==b'\t'){i+=1;} &line[i..]}; if trimmed.starts_with(b".") { if let Some(br)= trimmed.iter().position(|c| *c==b'{') { let name=String::from_utf8_lossy(&trimmed[1..br]).to_string(); let len=line.len()+1; state_guard.css_index.insert(name,(rel_off,len)); rel_off+=len; } else { rel_off+= line.len()+1; } } else { rel_off+= line.len()+1; } }
+                for line in block.split(|b| *b == b'\n') {
+                    if line.is_empty() {
+                        continue;
+                    }
+                    let trimmed = {
+                        let mut i = 0;
+                        while i < line.len() && (line[i] == b' ' || line[i] == b'\t') {
+                            i += 1;
+                        }
+                        &line[i..]
+                    };
+                    if trimmed.starts_with(b".") {
+                        if let Some(br) = trimmed.iter().position(|c| *c == b'{') {
+                            let name = String::from_utf8_lossy(&trimmed[1..br]).to_string();
+                            let len = line.len() + 1;
+                            state_guard.css_index.insert(name, (rel_off, len));
+                            rel_off += len;
+                        } else {
+                            rel_off += line.len() + 1;
+                        }
+                    } else {
+                        rel_off += line.len() + 1;
+                    }
+                }
                 state_guard.css_out.flush_now()?;
             }
         } else if !removed.is_empty() && added.is_empty() {
             for r in &removed {
-                if let Some((off,len)) = state_guard.css_index.remove(r) { let abs = state_guard.utilities_offset + off; let _ = state_guard.css_out.blank_range(abs, len); }
+                if let Some((off, len)) = state_guard.css_index.remove(r) {
+                    let abs = state_guard.utilities_offset + off;
+                    let _ = state_guard.css_out.blank_range(abs, len);
+                }
             }
             state_guard.css_out.flush_now()?;
         } else {
             drop(state_guard);
-        css_write_timer.elapsed()
+            css_write_timer.elapsed()
+        }
     };
 
     let total_processing = hash_duration

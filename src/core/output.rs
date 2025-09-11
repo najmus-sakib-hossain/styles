@@ -43,6 +43,7 @@ impl CssOutput {
         } else {
             Self::open_writer(path)
         }
+    }
 
     fn ensure_marker_in_memory(buf: &[u8]) -> Option<usize> {
         if let Some(pos) = twoway::find_bytes(buf, MANAGED_MARKER.as_bytes()) {
@@ -61,14 +62,16 @@ impl CssOutput {
         let mut existing = Vec::new();
         f.read_to_end(&mut existing)?;
         if !existing.is_empty() && Self::ensure_marker_in_memory(&existing).is_none() {
-            if let Some(prefix_pos) = twoway::find_bytes(&existing, MANAGED_MARKER_PREFIX.as_bytes()) {
+            if let Some(prefix_pos) =
+                twoway::find_bytes(&existing, MANAGED_MARKER_PREFIX.as_bytes())
+            {
                 let after = &existing[prefix_pos..];
                 let has_close = after.windows(2).position(|w| w == b"*/");
                 if has_close.is_none() {
                     let mut repaired = existing[..prefix_pos].to_vec();
                     repaired.extend_from_slice(MANAGED_MARKER.as_bytes());
                     if let Some(nl) = after.iter().position(|b| *b == b'\n') {
-                        repaired.extend_from_slice(&after[nl+1..]);
+                        repaired.extend_from_slice(&after[nl + 1..]);
                     }
                     existing = repaired;
                     f.set_len(0)?;
@@ -123,7 +126,11 @@ impl CssOutput {
             file.set_len(4096)?;
             was_empty = true;
         }
-        let mut logical_len = if was_empty { 0 } else { file.metadata()?.len() as usize };
+        let mut logical_len = if was_empty {
+            0
+        } else {
+            file.metadata()?.len() as usize
+        };
         let mut tmp = Vec::with_capacity(logical_len);
         {
             let mut reader = std::io::BufReader::new(&file);
@@ -131,7 +138,9 @@ impl CssOutput {
             reader.read_to_end(&mut tmp)?;
         }
         let all_zeros = !tmp.is_empty() && tmp.iter().all(|b| *b == 0);
-        if all_zeros { logical_len = 0; }
+        if all_zeros {
+            logical_len = 0;
+        }
         if !all_zeros && !tmp.is_empty() {
             if let Some(first_non_zero) = tmp.iter().position(|b| *b != 0) {
                 if first_non_zero > 0 {
@@ -140,7 +149,9 @@ impl CssOutput {
                     new_buf.extend_from_slice(&tmp[first_non_zero..]);
                     file.set_len(new_len as u64)?;
                     let cap = (new_len.next_power_of_two()).max(4096) as u64;
-                    if cap > new_len as u64 { file.set_len(cap)?; }
+                    if cap > new_len as u64 {
+                        file.set_len(cap)?;
+                    }
                     let mut mmap_temp = unsafe { MmapMut::map_mut(&file)? };
                     mmap_temp[..new_len].copy_from_slice(&new_buf);
                     mmap_temp.flush()?;
@@ -157,10 +168,12 @@ impl CssOutput {
                     let mut repaired = tmp[..prefix_pos].to_vec();
                     repaired.extend_from_slice(MANAGED_MARKER.as_bytes());
                     if let Some(nl) = after.iter().position(|b| *b == b'\n') {
-                        repaired.extend_from_slice(&after[nl+1..]);
+                        repaired.extend_from_slice(&after[nl + 1..]);
                     }
                     let needed = repaired.len();
-                    if needed > file.metadata()?.len() as usize { file.set_len((needed.next_power_of_two()).max(4096) as u64)?; }
+                    if needed > file.metadata()?.len() as usize {
+                        file.set_len((needed.next_power_of_two()).max(4096) as u64)?;
+                    }
                     let mut mmap_temp = unsafe { MmapMut::map_mut(&file)? };
                     mmap_temp[..repaired.len()].copy_from_slice(&repaired);
                     mmap_temp.flush()?;
@@ -169,7 +182,11 @@ impl CssOutput {
                 }
             }
         }
-        let managed_base = if let Some(base) = if logical_len > 0 { Self::ensure_marker_in_memory(&tmp) } else { None } {
+        let managed_base = if let Some(base) = if logical_len > 0 {
+            Self::ensure_marker_in_memory(&tmp)
+        } else {
+            None
+        } {
             base
         } else {
             let place_at = if logical_len == 0 { 0 } else { logical_len };
@@ -200,7 +217,12 @@ impl CssOutput {
 
     pub fn replace(&mut self, bytes: &[u8]) -> std::io::Result<()> {
         match &mut self.backend {
-            CssBackend::Writer { writer, logical_len, dirty, .. } => {
+            CssBackend::Writer {
+                writer,
+                logical_len,
+                dirty,
+                ..
+            } => {
                 let truncate_len = self.managed_base as u64;
                 writer.get_mut().set_len(truncate_len)?;
                 writer.seek(SeekFrom::Start(truncate_len))?;
@@ -208,7 +230,13 @@ impl CssOutput {
                 *logical_len = self.managed_base + bytes.len();
                 *dirty = true;
             }
-            CssBackend::Mmap { file, mmap, logical_len, dirty, .. } => {
+            CssBackend::Mmap {
+                file,
+                mmap,
+                logical_len,
+                dirty,
+                ..
+            } => {
                 let needed_total = self.managed_base + bytes.len();
                 if mmap.len() < needed_total {
                     let new_len = (needed_total.next_power_of_two()).max(4096);
@@ -227,13 +255,24 @@ impl CssOutput {
     #[allow(dead_code)]
     pub fn append(&mut self, bytes: &[u8]) -> std::io::Result<()> {
         match &mut self.backend {
-            CssBackend::Writer { writer, logical_len, dirty, .. } => {
+            CssBackend::Writer {
+                writer,
+                logical_len,
+                dirty,
+                ..
+            } => {
                 writer.seek(SeekFrom::Start(*logical_len as u64))?;
                 writer.write_all(bytes)?;
                 *logical_len += bytes.len();
                 *dirty = true;
             }
-            CssBackend::Mmap { file, mmap, logical_len, dirty, .. } => {
+            CssBackend::Mmap {
+                file,
+                mmap,
+                logical_len,
+                dirty,
+                ..
+            } => {
                 let needed = *logical_len + bytes.len();
                 if mmap.len() < needed {
                     let new_len = (needed.next_power_of_two()).max(4096);
@@ -260,16 +299,30 @@ impl CssOutput {
                 .unwrap_or_else(|| Duration::from_millis(25))
         });
         match &mut self.backend {
-            CssBackend::Writer { writer, dirty, last_flush, .. } => {
-                let should_flush = cfg!(feature = "eager-flush") || interval.is_zero() || (*dirty && last_flush.elapsed() >= interval);
+            CssBackend::Writer {
+                writer,
+                dirty,
+                last_flush,
+                ..
+            } => {
+                let should_flush = cfg!(feature = "eager-flush")
+                    || interval.is_zero()
+                    || (*dirty && last_flush.elapsed() >= interval);
                 if should_flush {
                     writer.flush()?;
                     *dirty = false;
                     *last_flush = Instant::now();
                 }
             }
-            CssBackend::Mmap { mmap, dirty, last_flush, .. } => {
-                let should_flush = cfg!(feature = "eager-flush") || interval.is_zero() || (*dirty && last_flush.elapsed() >= interval);
+            CssBackend::Mmap {
+                mmap,
+                dirty,
+                last_flush,
+                ..
+            } => {
+                let should_flush = cfg!(feature = "eager-flush")
+                    || interval.is_zero()
+                    || (*dirty && last_flush.elapsed() >= interval);
                 if should_flush {
                     mmap.flush()?;
                     *dirty = false;
@@ -282,12 +335,28 @@ impl CssOutput {
 
     pub fn flush_now(&mut self) -> std::io::Result<()> {
         match &mut self.backend {
-            CssBackend::Writer { writer, dirty, last_flush, .. } => {
-                if *dirty { writer.flush()?; *dirty = false; }
+            CssBackend::Writer {
+                writer,
+                dirty,
+                last_flush,
+                ..
+            } => {
+                if *dirty {
+                    writer.flush()?;
+                    *dirty = false;
+                }
                 *last_flush = Instant::now();
             }
-            CssBackend::Mmap { mmap, dirty, last_flush, .. } => {
-                if *dirty { mmap.flush()?; *dirty = false; }
+            CssBackend::Mmap {
+                mmap,
+                dirty,
+                last_flush,
+                ..
+            } => {
+                if *dirty {
+                    mmap.flush()?;
+                    *dirty = false;
+                }
                 *last_flush = Instant::now();
             }
         }
@@ -295,10 +364,22 @@ impl CssOutput {
     }
 
     pub fn append_inside_final_block(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
-        if bytes.is_empty() { return Ok(self.current_len()); }
+        if bytes.is_empty() {
+            return Ok(self.current_len());
+        }
         match &mut self.backend {
-            CssBackend::Writer { writer, logical_len, dirty, .. } => {
-                if *logical_len < 2 { return Err(std::io::Error::new(std::io::ErrorKind::Other, "file too short")); }
+            CssBackend::Writer {
+                writer,
+                logical_len,
+                dirty,
+                ..
+            } => {
+                if *logical_len < 2 {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        "file too short",
+                    ));
+                }
                 let insert_pos = *logical_len - 2;
                 writer.seek(SeekFrom::Start(insert_pos as u64))?;
                 writer.write_all(bytes)?;
@@ -307,8 +388,19 @@ impl CssOutput {
                 *dirty = true;
                 Ok(insert_pos - self.managed_base)
             }
-            CssBackend::Mmap { file, mmap, logical_len, dirty, .. } => {
-                if *logical_len < 2 { return Err(std::io::Error::new(std::io::ErrorKind::Other, "file too short")); }
+            CssBackend::Mmap {
+                file,
+                mmap,
+                logical_len,
+                dirty,
+                ..
+            } => {
+                if *logical_len < 2 {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        "file too short",
+                    ));
+                }
                 let insert_pos = *logical_len - 2;
                 let needed = insert_pos + bytes.len() + 2;
                 if mmap.len() < needed {
@@ -317,7 +409,8 @@ impl CssOutput {
                     *mmap = unsafe { MmapMut::map_mut(&*file)? };
                 }
                 mmap[insert_pos..insert_pos + bytes.len()].copy_from_slice(bytes);
-                mmap[insert_pos + bytes.len()..insert_pos + bytes.len() + 2].copy_from_slice(b"}\n");
+                mmap[insert_pos + bytes.len()..insert_pos + bytes.len() + 2]
+                    .copy_from_slice(b"}\n");
                 *logical_len = insert_pos + bytes.len() + 2;
                 *dirty = true;
                 Ok(insert_pos - self.managed_base)
@@ -328,13 +421,22 @@ impl CssOutput {
     #[allow(dead_code)]
     pub fn truncate_managed_to(&mut self, rel_len: usize) -> std::io::Result<()> {
         match &mut self.backend {
-            CssBackend::Writer { writer, logical_len, .. } => {
+            CssBackend::Writer {
+                writer,
+                logical_len,
+                ..
+            } => {
                 let new_total = self.managed_base + rel_len;
                 writer.get_mut().set_len(new_total as u64)?;
                 writer.seek(SeekFrom::Start(new_total as u64))?;
                 *logical_len = new_total;
             }
-            CssBackend::Mmap { file, mmap, logical_len, .. } => {
+            CssBackend::Mmap {
+                file,
+                mmap,
+                logical_len,
+                ..
+            } => {
                 let new_total = self.managed_base + rel_len;
                 file.set_len(new_total as u64)?;
                 *mmap = unsafe { MmapMut::map_mut(&*file)? };
@@ -355,8 +457,15 @@ impl CssOutput {
     pub fn blank_range(&mut self, start: usize, len: usize) -> std::io::Result<()> {
         let abs_start = self.managed_base + start;
         match &mut self.backend {
-            CssBackend::Writer { writer, logical_len, dirty, .. } => {
-                if abs_start + len > *logical_len { return Ok(()); }
+            CssBackend::Writer {
+                writer,
+                logical_len,
+                dirty,
+                ..
+            } => {
+                if abs_start + len > *logical_len {
+                    return Ok(());
+                }
                 writer.seek(SeekFrom::Start(abs_start as u64))?;
                 const SPACE_BLOCK: [u8; 1024] = [b' '; 1024];
                 let mut remaining = len;
@@ -368,9 +477,18 @@ impl CssOutput {
                 writer.seek(SeekFrom::Start(*logical_len as u64))?;
                 *dirty = true;
             }
-            CssBackend::Mmap { mmap, logical_len, dirty, .. } => {
-                if abs_start + len > *logical_len { return Ok(()); }
-                for b in &mut mmap[abs_start..abs_start+len] { *b = b' '; }
+            CssBackend::Mmap {
+                mmap,
+                logical_len,
+                dirty,
+                ..
+            } => {
+                if abs_start + len > *logical_len {
+                    return Ok(());
+                }
+                for b in &mut mmap[abs_start..abs_start + len] {
+                    *b = b' ';
+                }
                 *dirty = true;
             }
         }
@@ -382,10 +500,14 @@ impl Drop for CssOutput {
     fn drop(&mut self) {
         match &mut self.backend {
             CssBackend::Writer { writer, dirty, .. } => {
-                if *dirty { let _ = writer.flush(); }
+                if *dirty {
+                    let _ = writer.flush();
+                }
             }
             CssBackend::Mmap { mmap, dirty, .. } => {
-                if *dirty { let _ = mmap.flush(); }
+                if *dirty {
+                    let _ = mmap.flush();
+                }
             }
         }
     }
