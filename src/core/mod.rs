@@ -85,12 +85,12 @@ pub fn rebuild_styles(
     let parse_extract_duration = parse_timer.elapsed();
 
     let diff_timer = Instant::now();
-    let (added, removed, old_hash_just_for_info) = {
+    let (added, removed) = {
         let state_guard = state.lock().unwrap();
         let old = &state_guard.class_cache;
         let added: Vec<String> = all_classes.difference(old).cloned().collect();
         let removed: Vec<String> = old.difference(&all_classes).cloned().collect();
-        (added, removed, state_guard.html_hash)
+        (added, removed)
     };
     let diff_duration = diff_timer.elapsed();
 
@@ -126,8 +126,19 @@ pub fn rebuild_styles(
         eprintln!("{} {}", "Error saving cache:".red(), e);
     }
 
+    struct WriteStats {
+        mode: &'static str,
+        classes_written: usize,
+        bytes_written: usize,
+        sub1_label: &'static str,
+        sub1: std::time::Duration,
+        sub2_label: Option<&'static str>,
+        sub2: Option<std::time::Duration>,
+        sub3_label: Option<&'static str>,
+        sub3: Option<std::time::Duration>,
+    }
     let css_write_timer = Instant::now();
-    let css_write_duration = {
+    let (css_write_duration, write_stats) = {
         let mut state_guard = state.lock().unwrap();
         state_guard.css_buffer.clear();
         let is_color = |c: &str| {
@@ -153,6 +164,7 @@ pub fn rebuild_styles(
         if need_full {
             let mut class_vec: Vec<String> = state_guard.class_cache.iter().cloned().collect();
             class_vec.sort();
+            let phase_start = Instant::now();
             state_guard
                 .css_buffer
                 .extend_from_slice(b"@layer theme, components, utilities, base, properties;\n");
@@ -227,6 +239,8 @@ pub fn rebuild_styles(
             }
             let mut util_buf = Vec::new();
             generator::generate_class_rules_only(&mut util_buf, class_vec.iter());
+            let gen_layers_utils = phase_start.elapsed();
+            let util_phase_start = Instant::now();
             let mut util_body = String::new();
             for line in String::from_utf8_lossy(&util_buf).lines() {
                 if line.trim().is_empty() {
@@ -249,6 +263,8 @@ pub fn rebuild_styles(
             }
             state_guard.css_buffer.extend_from_slice(b"}\n");
             let fragment_vec = state_guard.css_buffer.clone();
+            let build_utilities = util_phase_start.elapsed();
+            let flush_start = Instant::now();
             use ahash::AHasher;
             let mut hh = AHasher::default();
             hh.write(&fragment_vec);
@@ -287,10 +303,27 @@ pub fn rebuild_styles(
                 }
             }
             state_guard.css_out.flush_now()?;
-            css_write_timer.elapsed()
+            let flush_time = flush_start.elapsed();
+            (
+                css_write_timer.elapsed(),
+                WriteStats {
+                    mode: "full",
+                    classes_written: class_vec.len(),
+                    bytes_written: fragment_vec.len(),
+                    sub1_label: "layers+gen",
+                    sub1: gen_layers_utils,
+                    sub2_label: Some("utilities"),
+                    sub2: Some(build_utilities),
+                    sub3_label: Some("flush"),
+                    sub3: Some(flush_time),
+                },
+            )
         } else if only_additions {
+            let gen_start = Instant::now();
             generator::generate_class_rules_only(&mut state_guard.css_buffer, added.iter());
             if !state_guard.css_buffer.is_empty() {
+                let gen_time = gen_start.elapsed();
+                let build_start = Instant::now();
                 let raw = std::mem::take(&mut state_guard.css_buffer);
                 let mut block = Vec::with_capacity(raw.len() + 32);
                 for line in raw.split(|b| *b == b'\n') {
@@ -301,6 +334,8 @@ pub fn rebuild_styles(
                     block.extend_from_slice(line);
                     block.push(b'\n');
                 }
+                let build_time = build_start.elapsed();
+                let flush_start = Instant::now();
                 let start_rel = state_guard.css_out.append_inside_final_block(&block)?;
                 let mut rel_off = start_rel - state_guard.utilities_offset;
                 for line in block.split(|b| *b == b'\n') {
@@ -328,20 +363,79 @@ pub fn rebuild_styles(
                     }
                 }
                 state_guard.css_out.flush_now()?;
+                let flush_time = flush_start.elapsed();
+                (
+                    css_write_timer.elapsed(),
+                    WriteStats {
+                        mode: "add",
+                        classes_written: added.len(),
+                        bytes_written: block.len(),
+                        sub1_label: "gen",
+                        sub1: gen_time,
+                        sub2_label: Some("build"),
+                        sub2: Some(build_time),
+                        sub3_label: Some("flush"),
+                        sub3: Some(flush_time),
+                    },
+                )
+            } else {
+                (
+                    css_write_timer.elapsed(),
+                    WriteStats {
+                        mode: "add",
+                        classes_written: 0,
+                        bytes_written: 0,
+                        sub1_label: "gen",
+                        sub1: gen_start.elapsed(),
+                        sub2_label: None,
+                        sub2: None,
+                        sub3_label: None,
+                        sub3: None,
+                    },
+                )
             }
-            css_write_timer.elapsed()
         } else if !removed.is_empty() && added.is_empty() {
+            let mut removed_bytes = 0usize;
             for r in &removed {
                 if let Some((off, len)) = state_guard.css_index.remove(r) {
                     let abs = state_guard.utilities_offset + off;
                     let _ = state_guard.css_out.blank_range(abs, len);
+                    removed_bytes += len;
                 }
             }
+            let flush_start = Instant::now();
             state_guard.css_out.flush_now()?;
-            css_write_timer.elapsed()
+            let flush_time = flush_start.elapsed();
+            (
+                css_write_timer.elapsed(),
+                WriteStats {
+                    mode: "remove",
+                    classes_written: removed.len(),
+                    bytes_written: removed_bytes,
+                    sub1_label: "blank",
+                    sub1: flush_time, // treat all as one phase
+                    sub2_label: None,
+                    sub2: None,
+                    sub3_label: None,
+                    sub3: None,
+                },
+            )
         } else {
             drop(state_guard);
-            css_write_timer.elapsed()
+            (
+                css_write_timer.elapsed(),
+                WriteStats {
+                    mode: "mixed",
+                    classes_written: added.len() + removed.len(),
+                    bytes_written: 0,
+                    sub1_label: "noop",
+                    sub1: std::time::Duration::from_micros(0),
+                    sub2_label: None,
+                    sub2: None,
+                    sub3_label: None,
+                    sub3: None,
+                },
+            )
         }
     };
 
@@ -360,17 +454,32 @@ pub fn rebuild_styles(
         println!("{}", line_fmt);
         FIRST_LOG_DONE.store(true, Ordering::Relaxed);
     } else {
+        // Build write detail string
+        let mut write_detail = format!(
+            "mode={} classes={} bytes={} {}={:?}",
+            write_stats.mode,
+            write_stats.classes_written,
+            write_stats.bytes_written,
+            write_stats.sub1_label,
+            write_stats.sub1
+        );
+        if let (Some(l2), Some(d2)) = (write_stats.sub2_label, write_stats.sub2) {
+            write_detail.push_str(&format!(" {}={:?}", l2, d2));
+        }
+        if let (Some(l3), Some(d3)) = (write_stats.sub3_label, write_stats.sub3) {
+            write_detail.push_str(&format!(" {}={:?}", l3, d3));
+        }
         println!(
-            "Processed: {} added, {} removed (prev hash: {:x}) | (Total: {} -> Hash: {}, Parse: {}, Diff: {}, Cache: {}, Write: {})",
+            "Processed: {} added, {} removed | (Total: {} -> Hash: {}, Parse: {}, Diff: {}, Cache: {}, Write: {} [{}])",
             format!("{}", added.len()).green(),
             format!("{}", removed.len()).red(),
-            old_hash_just_for_info,
             format_duration(total_processing),
             format_duration(hash_duration),
             format_duration(parse_extract_duration),
             format_duration(diff_duration),
             format_duration(cache_update_duration),
-            format_duration(css_write_duration)
+            format_duration(css_write_duration),
+            write_detail
         );
     }
 
