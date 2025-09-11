@@ -100,9 +100,11 @@ impl CssOutput {
         let managed_base = if let Some(base) = Self::ensure_marker_in_memory(&existing) {
             base
         } else {
+            // Append marker and return new logical end as managed base
             f.seek(SeekFrom::End(0))?;
             f.write_all(MANAGED_MARKER.as_bytes())?;
             logical_len += MANAGED_MARKER.len();
+            logical_len
         };
         Ok(Self {
             backend: CssBackend::Writer {

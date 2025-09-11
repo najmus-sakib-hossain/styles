@@ -150,7 +150,7 @@ pub fn rebuild_styles(
         } else {
             true
         };
-        if need_full {
+    if need_full {
             let mut class_vec: Vec<String> = state_guard.class_cache.iter().cloned().collect();
             class_vec.sort();
             state_guard
@@ -255,7 +255,8 @@ pub fn rebuild_styles(
             let frag_hash = hh.finish();
             let fragment_len = fragment_vec.len();
             let utilities_offset = state_guard.utilities_offset;
-            if !skip_write {
+            // Only write if content actually changed (replaces old skip_write logic)
+            if state_guard.last_css_hash != frag_hash {
                 state_guard.css_out.replace(&fragment_vec)?;
                 state_guard.last_css_hash = frag_hash;
             }
@@ -287,6 +288,7 @@ pub fn rebuild_styles(
                 }
             }
             state_guard.css_out.flush_now()?;
+            css_write_timer.elapsed()
         } else if only_additions {
             generator::generate_class_rules_only(&mut state_guard.css_buffer, added.iter());
             if !state_guard.css_buffer.is_empty() {
@@ -328,6 +330,7 @@ pub fn rebuild_styles(
                 }
                 state_guard.css_out.flush_now()?;
             }
+            css_write_timer.elapsed()
         } else if !removed.is_empty() && added.is_empty() {
             for r in &removed {
                 if let Some((off, len)) = state_guard.css_index.remove(r) {
@@ -336,6 +339,7 @@ pub fn rebuild_styles(
                 }
             }
             state_guard.css_out.flush_now()?;
+            css_write_timer.elapsed()
         } else {
             drop(state_guard);
             css_write_timer.elapsed()
