@@ -11,6 +11,11 @@ where
     if let Some(engine) = engine_opt {
         let collected: Vec<&String> = classes.into_iter().collect();
         if buf.is_empty() {
+            // Emit custom @property at-rules first (if any)
+            let props = engine.property_at_rules();
+            if !props.is_empty() {
+                buf.extend_from_slice(props.as_bytes());
+            }
             let (root_vars, dark_vars) =
                 engine.generate_color_vars_for(collected.iter().map(|s| *s));
             if !root_vars.is_empty() {

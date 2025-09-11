@@ -80,6 +80,9 @@
 "leading|line-height" = { multiplier = 0.25, unit = "rem" }
 "line-clamp|--webkit-line-clamp" = { multiplier = 1, unit = "" }
 "max-h|max-height" = { multiplier = 0.25, unit = "rem" }
+"max-w|max-width" = { multiplier = 0.25, unit = "rem" }
+"min-h|min-height" = { multiplier = 0.25, unit = "rem" }
+"min-w|min-width" = { multiplier = 0.25, unit = "rem" }
 "opacity|opacity" = { multiplier = 0.01, unit = "" }
 "order|order" = { multiplier = 1, unit = "" }
 "outline-offset|outline-offset" = { multiplier = 1, unit = "px" }
@@ -125,3 +128,28 @@
 "rounded-r|border-top-right-radius, border-bottom-right-radius" = { multiplier = 0.25, unit = "rem" }
 "rounded-b|border-bottom-right-radius, border-bottom-left-radius" = { multiplier = 0.25, unit = "rem" }
 "rounded-l|border-top-left-radius, border-bottom-left-radius" = { multiplier = 0.25, unit = "rem" }
+"indent|text-indent" = { multiplier = 0.25, unit = "rem" }
+"tracking|letter-spacing" = { multiplier = 0.025, unit = "em" }
+"-tracking|letter-spacing" = { multiplier = -0.025, unit = "em" }
+"inset|top, right, bottom, left" = { multiplier = 0.25, unit = "rem" }
+"-inset|top, right, bottom, left" = { multiplier = -0.25, unit = "rem" }
+"inset-x|left, right" = { multiplier = 0.25, unit = "rem" }
+"-inset-x|left, right" = { multiplier = -0.25, unit = "rem" }
+"inset-y|top, bottom" = { multiplier = 0.25, unit = "rem" }
+"-inset-y|top, bottom" = { multiplier = -0.25, unit = "rem" }
+"inset-t|top" = { multiplier = 0.25, unit = "rem" }
+"-inset-t|top" = { multiplier = -0.25, unit = "rem" }
+"inset-r|right" = { multiplier = 0.25, unit = "rem" }
+"-inset-r|right" = { multiplier = -0.25, unit = "rem" }
+"inset-b|bottom" = { multiplier = 0.25, unit = "rem" }
+"-inset-b|bottom" = { multiplier = -0.25, unit = "rem" }
+"inset-l|left" = { multiplier = 0.25, unit = "rem" }
+"-inset-l|left" = { multiplier = -0.25, unit = "rem" }
+"top|top" = { multiplier = 0.25, unit = "rem" }
+"-top|top" = { multiplier = -0.25, unit = "rem" }
+"right|right" = { multiplier = 0.25, unit = "rem" }
+"-right|right" = { multiplier = -0.25, unit = "rem" }
+"bottom|bottom" = { multiplier = 0.25, unit = "rem" }
+"-bottom|bottom" = { multiplier = -0.25, unit = "rem" }
+"left|left" = { multiplier = 0.25, unit = "rem" }
+"-left|left" = { multiplier = -0.25, unit = "rem" }
