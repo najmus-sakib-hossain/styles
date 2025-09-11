@@ -133,7 +133,7 @@ pub fn rebuild_styles(
                 let class_vec: Vec<String> = state_guard.class_cache.iter().cloned().collect();
                 // Prepend base layer CSS once if not already present in managed region
                 // Layer preamble always at top
-                state_guard.css_buffer.extend_from_slice(b"@layer properties;\n@layer theme, base, components, utilities;\n");
+                state_guard.css_buffer.extend_from_slice(b"@layer theme, components, utilities, base, properties;\n");
 
                 // Properties layer once
                 if !properties_layer_present() {
@@ -163,9 +163,27 @@ pub fn rebuild_styles(
                         }
                     }
                 }
-                // Utilities layer for all classes
+                // Utilities layer for all classes with indentation
                 state_guard.css_buffer.extend_from_slice(b"@layer utilities {\n");
-                generator::generate_class_rules_only(&mut state_guard.css_buffer, class_vec.iter());
+                {
+                    let len_before = state_guard.css_buffer.len();
+                    generator::generate_class_rules_only(&mut state_guard.css_buffer, class_vec.iter());
+                    // Post-process just added chunk to indent each line by two spaces
+                    let added = &mut state_guard.css_buffer[len_before..];
+                    // Convert to String temporarily
+                    if let Ok(mut segment) = String::from_utf8(added.to_vec()) {
+                        let mut out = String::with_capacity(segment.len() + 64);
+                        for line in segment.lines() {
+                            if line.trim().is_empty() { continue; }
+                            // Ensure block lines already contain their internal indentation; we add 2 spaces prefix
+                            out.push_str("  ");
+                            out.push_str(line);
+                            out.push('\n');
+                        }
+                        state_guard.css_buffer.truncate(len_before);
+                        state_guard.css_buffer.extend_from_slice(out.as_bytes());
+                    }
+                }
                 state_guard.css_buffer.extend_from_slice(b"}\n");
                 (true, Vec::new())
             } else {

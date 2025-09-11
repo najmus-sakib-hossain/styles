@@ -1,0 +1,38 @@
+[package]
+name = "material-colors"
+version = "0.4.2"
+edition = "2021"
+description = "Up-to-date material-color-utilities port"
+documentation = "https://docs.rs/material-colors"
+homepage = "https://github.com/Aiving/material-colors"
+repository = "https://github.com/Aiving/material-colors.git"
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+keywords = ["no_std", "palette", "color-scheme", "material-you"]
+categories = ["graphics", "no-std"]
+rust-version = "1.63.0"
+
+[dependencies]
+ahash = { version = "0.8.11", default-features = false }
+indexmap = { version = "2.3.0", default-features = false }
+images = { package = "image", version = "0.25.2", optional = true }
+serde = { version = "1.0.205", features = ["derive"], optional = true }
+libm = { version = "0.2.8", optional = true }
+
+[features]
+default = ["std"]
+std = ["indexmap/std", "ahash/std", "ahash/runtime-rng"]
+image = ["dep:images"]
+serde = ["dep:serde"]
+libm = ["dep:libm"]
+
+[profile.dev]
+opt-level = 1
+
+[profile.release]
+opt-level = 3
+
+[dev-dependencies]
+float-cmp = "0.9"
+reqwest = "0.12.5"
+tokio = { version = "1.39.2", features = ["rt", "macros"] }
