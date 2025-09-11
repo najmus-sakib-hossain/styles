@@ -1445,9 +1445,9 @@
   }
 }
 /* dx-styles */
-.border-2 {
-  border-width: 2px;
-}
 .flex {
   display: flex;
+}
+.border {
+  border-width: 1px;
 }

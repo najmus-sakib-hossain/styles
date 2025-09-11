@@ -38,7 +38,7 @@
 "border-spacing-y|border-spacing" = { multiplier = 0.25, unit = "rem" }
 "border-t-w|border-top-width" = { multiplier = 1, unit = "px" }
 "border-w|border-width" = { multiplier = 1, unit = "px" }
-"border|border-width" = { multiplier = 1, unit = "px" } # Added to support Tailwind syntax border-2, border-4 via generator
+"border|border-width" = { multiplier = 1, unit = "px" }
 "brightness|filter" = { multiplier = 0.01, unit = "" }
 "col-end|grid-column-end" = { multiplier = 1, unit = "" }
 "col-span|grid-column" = { multiplier = 1, unit = "" }
