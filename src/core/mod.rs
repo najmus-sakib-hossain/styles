@@ -351,19 +351,28 @@ pub fn rebuild_styles(
         + cache_update_duration
         + css_write_duration;
 
-    println!(
-        "Processed: {} added, {} removed (prev hash: {:x}) | (Total: {} -> Hash: {}, Parse: {}, Diff: {}, Cache: {}, Write: {})",
-        format!("{}", added.len()).green(),
-        format!("{}", removed.len()).red(),
-        old_hash_just_for_info,
-        format_duration(total_processing),
-        format_duration(hash_duration),
-        format_duration(parse_extract_duration),
-        format_duration(diff_duration),
-        format_duration(cache_update_duration),
-        format_duration(css_write_duration)
-    );
-    FIRST_LOG_DONE.store(true, Ordering::Relaxed);
+    if !FIRST_LOG_DONE.load(Ordering::Relaxed) {
+        let line_fmt = format!(
+            "Initial: {} added, {} removed",
+            format!("{}", added.len()).green(),
+            format!("{}", removed.len()).red(),
+        );
+        println!("{}", line_fmt);
+        FIRST_LOG_DONE.store(true, Ordering::Relaxed);
+    } else {
+        println!(
+            "Processed: {} added, {} removed (prev hash: {:x}) | (Total: {} -> Hash: {}, Parse: {}, Diff: {}, Cache: {}, Write: {})",
+            format!("{}", added.len()).green(),
+            format!("{}", removed.len()).red(),
+            old_hash_just_for_info,
+            format_duration(total_processing),
+            format_duration(hash_duration),
+            format_duration(parse_extract_duration),
+            format_duration(diff_duration),
+            format_duration(cache_update_duration),
+            format_duration(css_write_duration)
+        );
+    }
 
     if !added.is_empty() || !removed.is_empty() {
         if let Ok(mut guard) = state.lock() {

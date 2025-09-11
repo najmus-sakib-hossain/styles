@@ -23,7 +23,7 @@ pub fn start(
                     &config.paths.index_file,
                     interval.as_millis()
                 )
-                .cyan()
+                .white()
             );
             use std::fs;
             let mut last_mtime = fs::metadata(&config.paths.index_file)
@@ -55,7 +55,7 @@ pub fn start(
         watcher.watch(Path::new(&config.paths.html_dir), RecursiveMode::Recursive)?;
         println!(
             "{}",
-            format!("Watching (raw) {} for changes...", &config.paths.html_dir).cyan()
+            format!("Watching (raw) {} for changes...", &config.paths.html_dir).white()
         );
         let mut last_trigger = Instant::now() - Duration::from_secs(1);
         let min_gap = Duration::from_millis(5);
@@ -97,7 +97,7 @@ pub fn start(
 
     println!(
         "{}",
-        format!("Watching {} for changes...", &config.paths.html_dir).cyan()
+        format!("Watching {} for changes...", &config.paths.html_dir).white()
     );
 
     loop {
