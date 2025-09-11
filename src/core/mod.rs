@@ -128,7 +128,10 @@ pub fn rebuild_styles(
             let missing_index_for_removed = removed.iter().any(|c| !state_guard.css_index.contains_key(c));
             // We only need a full rewrite when removed classes exist OR color classes changed
             // or we lack index info. User-added manual CSS (outside managed marker) is preserved by backend.
-            let force_full = is_initial_run ||(!removed.is_empty()) || missing_index_for_removed || removed_has_color || added_has_color;
+            // We now always do a full rewrite for ANY additions or removals to keep layers singular
+            // and avoid duplicating @layer utilities blocks. This trades some extra I/O for
+            // correctness & uniqueness of layer/content structure.
+            let force_full = is_initial_run || !removed.is_empty() || !added.is_empty() || missing_index_for_removed || removed_has_color || added_has_color;
             if force_full {
                 let class_vec: Vec<String> = state_guard.class_cache.iter().cloned().collect();
                 // Prepend base layer CSS once if not already present in managed region
@@ -174,27 +177,25 @@ pub fn rebuild_styles(
                     }
                     write_layer(&mut state_guard.css_buffer, "utilities", &util_body);
                 }
-                // Base layer after utilities per requested order
-                if !base_layer_present() {
-                    if let Some(base_raw) = AppState::engine().base_layer_raw.as_ref() {
-                        if !base_raw.is_empty() {
-                            // Indent lines by two spaces inside layer; base_raw already has its own indentation
-                            let mut base_body = String::new();
-                            for line in base_raw.trim_end().lines() {
-                                base_body.push_str(line);
-                                base_body.push('\n');
-                            }
-                            write_layer(&mut state_guard.css_buffer, "base", &base_body);
-                            set_base_layer_present();
-                        } else {
-                            write_layer(&mut state_guard.css_buffer, "base", "");
+                // Base layer after utilities per requested order (always emit exactly once in rewrite)
+                if let Some(base_raw) = AppState::engine().base_layer_raw.as_ref() {
+                    if !base_raw.is_empty() {
+                        let mut base_body = String::new();
+                        for line in base_raw.trim_end().lines() {
+                            if line.trim().is_empty() { continue; }
+                            base_body.push_str(line);
+                            base_body.push('\n');
                         }
+                        write_layer(&mut state_guard.css_buffer, "base", &base_body);
                     } else {
                         write_layer(&mut state_guard.css_buffer, "base", "");
                     }
+                } else {
+                    write_layer(&mut state_guard.css_buffer, "base", "");
                 }
-                // Properties layer last
-                if !properties_layer_present() {
+                set_base_layer_present();
+                // Properties layer last (always emit once)
+                {
                     let props = AppState::engine().property_at_rules();
                     if props.is_empty() {
                         write_layer(&mut state_guard.css_buffer, "properties", "");
@@ -206,14 +207,13 @@ pub fn rebuild_styles(
                             prop_body.push('\n');
                         }
                         write_layer(&mut state_guard.css_buffer, "properties", &prop_body);
-                        set_properties_layer_present();
                     }
+                    set_properties_layer_present();
                 }
-                (true, Vec::new())
+                (true, Vec::<String>::new())
             } else {
-                let local_added: Vec<String> = added.iter().cloned().collect();
-                generator::generate_css_into(&mut state_guard.css_buffer, local_added.iter());
-                (false, local_added)
+                // (Unreachable now because force_full includes any additions/removals). Keep fallback.
+                (true, Vec::<String>::new())
             }
         };
         let mut hasher = AHasher::default();
@@ -249,75 +249,7 @@ pub fn rebuild_styles(
                 state_guard.last_css_hash = new_hash_fragment;
                 state_guard.css_out.flush_now()?; // ensure removal visible
             }
-        } else {
-            // Tombstone deletions (non-color) by overwriting ranges with spaces.
-        if !removed.is_empty() {
-                let mut state_guard = state.lock().unwrap();
-                // Collect ranges
-                let mut ranges: Vec<(usize, usize)> = Vec::with_capacity(removed.len());
-                for r in &removed {
-                    if let Some((start, len)) = state_guard.css_index.remove(r) {
-                        ranges.push((start, len));
-                    }
-                }
-                if !ranges.is_empty() {
-                    // Sort & merge contiguous / overlapping for fewer writes
-                    ranges.sort_unstable_by_key(|r| r.0);
-                    let mut merged: Vec<(usize, usize)> = Vec::with_capacity(ranges.len());
-                    for (s, l) in ranges {
-                        if let Some(last) = merged.last_mut() {
-                            let end = last.0 + last.1;
-                            if s <= end { // overlap / touch
-                                let new_end = (s + l).max(end);
-                                last.1 = new_end - last.0;
-                                continue;
-                            }
-                        }
-                        merged.push((s, l));
-                    }
-                    for (s, l) in merged { state_guard.css_out.blank_range(s, l)?; }
-            state_guard.css_out.flush_now()?; // force flush so user sees deletion
-                }
-            }
-            if !added_clone.is_empty() {
-                // Wrap incremental additions in their own utilities layer block; indent lines.
-                let mut state_guard = state.lock().unwrap();
-                let mut block = Vec::with_capacity(css_fragment.len() + 64);
-                block.extend_from_slice(b"@layer utilities {\n");
-                for line in css_fragment.split(|b| *b == b'\n') {
-                    if line.is_empty() { continue; }
-                    block.extend_from_slice(b"  ");
-                    block.extend_from_slice(line);
-                    block.push(b'\n');
-                }
-                block.extend_from_slice(b"}\n");
-                let base_offset = state_guard.css_out.current_len();
-                state_guard.css_out.append(&block)?;
-                // index class lines (inside block) accounting for indentation
-                let mut rel = 0usize;
-                for line in block.split(|b| *b == b'\n') {
-                    if line.is_empty() { rel += 1; continue; }
-                    let trimmed = { let mut i=0; while i<line.len() && (line[i]==b' '|| line[i]==b'\t'){i+=1;} &line[i..] };
-                    if trimmed.starts_with(b".") {
-                        if let Some(brace) = trimmed.iter().position(|c| *c == b'{') {
-                            let class_name = String::from_utf8_lossy(&trimmed[1..brace]).to_string();
-                            let len = line.len() + 1;
-                            state_guard.css_index.insert(class_name, (base_offset + rel, len));
-                            rel += len;
-                        } else { rel += line.len() + 1; }
-                    } else { rel += line.len() + 1; }
-                }
-                state_guard.last_css_hash ^= new_hash_fragment;                
-                // Immediate flush optimization: when only a small number of classes were added
-                // (interactive typing), users expect the CSS file to update near-instantly.
-                // Flush immediately when (a) DX_IMMEDIATE_FLUSH env var is set OR
-                // (b) small batch size heuristic is met.
-                let immediate = std::env::var("DX_IMMEDIATE_FLUSH").is_ok() || added_clone.len() <= 16;
-                if immediate {
-                    state_guard.css_out.flush_now()?;
-                }
-            }
-        }
+    } else { /* no else branch; all paths now rewrite */ }
         {
             let mut state_guard = state.lock().unwrap();
             state_guard.css_out.flush_if_dirty()?;

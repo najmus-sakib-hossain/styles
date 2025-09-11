@@ -2,7 +2,11 @@
 @layer theme, components, utilities, base, properties;
 @layer theme {}
 @layer components {}
-@layer utilities {}
+@layer utilities {
+  .border {
+    border-width: 1px;
+  }
+}
 @layer base {
   *, ::after, ::before, ::backdrop, ::file-selector-button {
     box-sizing: border-box;
@@ -918,10 +922,5 @@
     syntax: "<length>";
     inherits: false;
     initial-value: 0px;
-  }
-}
-@layer utilities {
-  .border {
-    border-width: 1px;
   }
 }
