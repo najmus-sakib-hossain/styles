@@ -54,6 +54,7 @@ pub struct StyleEngine {
     pub colors: HashMap<String, String>,
     pub generators: Option<Vec<GeneratorMeta>>,
     pub generator_map: Option<HashMap<String, usize>>,
+    #[allow(dead_code)]
     pub properties: Vec<PropertyMeta>,
     pub property_css: String,
     pub base_layer_raw: Option<String>,

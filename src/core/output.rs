@@ -244,6 +244,7 @@ impl CssOutput {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub fn append(&mut self, bytes: &[u8]) -> std::io::Result<()> {
         match &mut self.backend {
             CssBackend::Writer { writer, logical_len, dirty, .. } => {
@@ -267,6 +268,7 @@ impl CssOutput {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub fn flush_if_dirty(&mut self) -> std::io::Result<()> {
         // Only flush if enough time has elapsed or feature forces eager flushing.
         // Env overrides:
@@ -353,6 +355,7 @@ impl CssOutput {
     }
 
     // Truncate managed region to given relative length (from start of managed region).
+    #[allow(dead_code)]
     pub fn truncate_managed_to(&mut self, rel_len: usize) -> std::io::Result<()> {
         match &mut self.backend {
             CssBackend::Writer { writer, logical_len, .. } => {

@@ -16,10 +16,12 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 static BASE_LAYER_PRESENT: AtomicBool = AtomicBool::new(false);
 pub fn set_base_layer_present() { BASE_LAYER_PRESENT.store(true, Ordering::Relaxed); }
+#[allow(dead_code)]
 fn base_layer_present() -> bool { BASE_LAYER_PRESENT.load(Ordering::Relaxed) }
 
 static PROPERTIES_LAYER_PRESENT: AtomicBool = AtomicBool::new(false);
 pub fn set_properties_layer_present() { PROPERTIES_LAYER_PRESENT.store(true, Ordering::Relaxed); }
+#[allow(dead_code)]
 pub fn properties_layer_present() -> bool { PROPERTIES_LAYER_PRESENT.load(Ordering::Relaxed) }
 
 static FIRST_LOG_DONE: AtomicBool = AtomicBool::new(false);

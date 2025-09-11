@@ -2,6 +2,7 @@ use cssparser::serialize_identifier;
 
 use crate::core::{AppState, properties_layer_present, set_properties_layer_present};
 
+#[allow(dead_code)]
 pub fn generate_css_into<'a, I>(buf: &mut Vec<u8>, classes: I)
 where
     I: IntoIterator<Item = &'a String>,
