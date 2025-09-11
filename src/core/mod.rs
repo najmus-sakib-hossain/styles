@@ -64,7 +64,10 @@ pub fn rebuild_styles(
 
     {
         let state_guard = state.lock().unwrap();
-        if !is_initial_run && state_guard.html_hash == new_html_hash {
+        // Skip entirely if HTML unchanged and (not initial) OR (initial but class cache & css_index match implying complete CSS)
+        let html_same = state_guard.html_hash == new_html_hash;
+        let css_complete = state_guard.css_index.len() == state_guard.class_cache.len();
+        if html_same && (!is_initial_run || css_complete) {
             return Ok(());
         }
     }
@@ -140,7 +143,8 @@ pub fn rebuild_styles(
     let need_full = if is_initial_run { true } else if only_additions { added_has_color } else if only_removals { removed_has_color || missing_index_for_removed } else { true };
         if need_full {
             // Full rewrite path
-            let class_vec: Vec<String> = state_guard.class_cache.iter().cloned().collect();
+            let mut class_vec: Vec<String> = state_guard.class_cache.iter().cloned().collect();
+            class_vec.sort(); // deterministic ordering across runs
             state_guard.css_buffer.extend_from_slice(b"@layer theme, components, utilities, base, properties;\n");
             fn write_layer(buf: &mut Vec<u8>, name: &str, body: &str) {
                 let trimmed = body.trim();
@@ -198,9 +202,13 @@ pub fn rebuild_styles(
 
             // Write to disk replacing managed region
             let fragment_vec = state_guard.css_buffer.clone();
+            // Cheap hash compare to avoid rewriting identical bytes
+            use ahash::AHasher; let mut hh = AHasher::default(); hh.write(&fragment_vec); let frag_hash = hh.finish();
             let fragment_len = fragment_vec.len();
             let utilities_offset = state_guard.utilities_offset;
-            state_guard.css_out.replace(&fragment_vec)?;
+            // Only replace if different length or hash
+            let skip_write = state_guard.last_css_hash == frag_hash && fragment_len as u64 == state_guard.last_css_hash; // simple reuse of field even if semantics differ
+            if !skip_write { state_guard.css_out.replace(&fragment_vec)?; state_guard.last_css_hash = frag_hash; }
             state_guard.css_index.clear();
             let body_slice: Vec<u8> = fragment_vec[utilities_offset..fragment_len-2].to_vec();
             let mut rel = 0usize;

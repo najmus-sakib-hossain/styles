@@ -64,10 +64,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if existing.windows(18).any(|w| w == b"@layer properties") { set_properties_layer_present(); }
         let mut offset = 0usize;
         for line in existing.split(|b| *b == b'\n') {
-            if line.starts_with(b".") {
-                if let Some(brace) = line.iter().position(|c| *c == b'{') {
-                    let cls = String::from_utf8_lossy(&line[1..brace]).to_string();
-                    let len = line.len() + 1;
+            let trimmed = {
+                let mut i=0; while i < line.len() && (line[i]==b' '|| line[i]==b'\t') { i+=1; } &line[i..]
+            };
+            if trimmed.starts_with(b".") {
+                if let Some(brace) = trimmed.iter().position(|c| *c == b'{') {
+                    let cls = String::from_utf8_lossy(&trimmed[1..brace]).to_string();
+                    let len = line.len() + 1; // include original indentation
                     css_index.insert(cls, (offset, len));
                     offset += len;
                 } else { offset += line.len() + 1; }

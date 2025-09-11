@@ -1,6 +1,13 @@
 /* style @0.0.0 */
 @layer theme, components, utilities, base, properties;
-@layer theme {}
+@layer theme {
+  :root {
+    --color-red-500: oklch(0.637 0.237 25.331);
+  }
+  .dark {
+    --color-red-500: oklch(0.637 0.237 25.331);
+  }
+}
 @layer components {}
 @layer base {
   *, ::after, ::before, ::backdrop, ::file-selector-button {
@@ -925,5 +932,8 @@
   }
   .flex {
     display: flex;
+  }
+  .text-red-500 {
+    color: var(--color-red-500);
   }
 }
