@@ -13,7 +13,6 @@ pub fn start(
     state: Arc<Mutex<AppState>>,
     config: Config,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // Highest priority: polling mode (DX_WATCH_POLL_MS)
     if let Ok(poll_ms_str) = std::env::var("DX_WATCH_POLL_MS") {
         if let Ok(interval_ms) = poll_ms_str.parse::<u64>() {
             let interval = Duration::from_millis(interval_ms.max(1));
@@ -36,7 +35,6 @@ pub fn start(
         }
     }
 
-    // Raw watcher mode (lowest latency) via DX_WATCH_RAW=1
     if std::env::var("DX_WATCH_RAW").ok().as_deref() == Some("1") {
         let (tx, rx) = mpsc::channel::<Result<Event, notify::Error>>();
         let mut watcher = notify::recommended_watcher(move |res| { let _ = tx.send(res); })?;
@@ -65,7 +63,6 @@ pub fn start(
     }
 
     let (tx, rx) = mpsc::channel();
-    // Debounce selection order: env override -> config -> default
     let debounce_ms = std::env::var("DX_DEBOUNCE_MS")
         .ok()
         .and_then(|v| v.parse::<u64>().ok())

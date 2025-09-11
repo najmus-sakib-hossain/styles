@@ -12,7 +12,7 @@ where
     if let Some(engine) = engine_opt {
         let collected: Vec<&String> = classes.into_iter().collect();
         if buf.is_empty() && !properties_layer_present() {
-            let props = engine.property_at_rules(); // already includes @property rules (not a layer marker)
+            let props = engine.property_at_rules();
             if !props.is_empty() {
                 buf.extend_from_slice(props.as_bytes());
                 set_properties_layer_present();

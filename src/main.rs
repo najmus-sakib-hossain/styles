@@ -57,7 +57,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     let class_list_checksum = preloaded_checksum;
-    // Pre-scan existing CSS file to build index (best-effort)
     let mut css_index = ahash::AHashMap::with_capacity(256);
     if let Ok(existing) = std::fs::read(&config.paths.css_file) {
         if existing.windows(11).any(|w| w == b"@layer base") { set_base_layer_present(); }
@@ -70,7 +69,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             if trimmed.starts_with(b".") {
                 if let Some(brace) = trimmed.iter().position(|c| *c == b'{') {
                     let cls = String::from_utf8_lossy(&trimmed[1..brace]).to_string();
-                    let len = line.len() + 1; // include original indentation
+                    let len = line.len() + 1;
                     css_index.insert(cls, (offset, len));
                     offset += len;
                 } else { offset += line.len() + 1; }

@@ -1,6 +1,6 @@
-use criterion::{Criterion, criterion_group, criterion_main, BatchSize};
+use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
+use std::fs;
 use style::core::output::{CssOutput, set_mmap_threshold};
-use std::fs; 
 
 // Simple micro benchmark measuring append & replace latency with small payloads.
 fn bench_writes(c: &mut Criterion) {
@@ -13,24 +13,32 @@ fn bench_writes(c: &mut Criterion) {
     group.sample_size(100);
 
     group.bench_function("append_small", |b| {
-        b.iter_batched(|| {
-            let mut out = CssOutput::open(path).unwrap();
-            out
-        }, |mut out| {
-            out.append(b".a{color:red;}").unwrap();
-            out.flush_if_dirty().unwrap();
-        }, BatchSize::SmallInput);
+        b.iter_batched(
+            || {
+                let mut out = CssOutput::open(path).unwrap();
+                out
+            },
+            |mut out| {
+                out.append(b".a{color:red;}").unwrap();
+                out.flush_if_dirty().unwrap();
+            },
+            BatchSize::SmallInput,
+        );
     });
 
     group.bench_function("replace_small", |b| {
-        b.iter_batched(|| {
-            let mut out = CssOutput::open(path).unwrap();
-            out.append(b".seed{display:block;}").unwrap();
-            out
-        }, |mut out| {
-            out.replace(b".seed{display:block;}.b{margin:0;}").unwrap();
-            out.flush_if_dirty().unwrap();
-        }, BatchSize::SmallInput);
+        b.iter_batched(
+            || {
+                let mut out = CssOutput::open(path).unwrap();
+                out.append(b".seed{display:block;}").unwrap();
+                out
+            },
+            |mut out| {
+                out.replace(b".seed{display:block;}.b{margin:0;}").unwrap();
+                out.flush_if_dirty().unwrap();
+            },
+            BatchSize::SmallInput,
+        );
     });
 
     group.finish();

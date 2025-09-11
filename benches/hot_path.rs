@@ -3,7 +3,11 @@ use criterion::{Criterion, criterion_group, criterion_main};
 use std::sync::{Arc, Mutex};
 use style::{
     config::Config,
-    core::{AppState, output::{CssOutput, set_mmap_threshold}, rebuild_styles},
+    core::{
+        AppState,
+        output::{CssOutput, set_mmap_threshold},
+        rebuild_styles,
+    },
 };
 
 fn setup_state() -> Arc<Mutex<AppState>> {

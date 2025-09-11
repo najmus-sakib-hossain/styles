@@ -1,13 +1,9 @@
-// pub mod animation;
-// pub mod color;
 pub mod composite;
 pub mod container_queries;
 pub mod dynamic;
 pub mod screens;
 pub mod states;
 
-// pub use animation::{PendingAnimation, generate_animation_css};
-// pub use color::generate_color_css;
 pub use composite::expand_composite;
 pub use dynamic::generate_dynamic_css;
 pub use screens::{build_block, sanitize_declarations, wrap_media_queries};
@@ -65,7 +61,7 @@ pub struct PropertyMeta {
     pub name: String,
     pub syntax: String,
     pub inherits: bool,
-    pub initial: String, // may be empty
+    pub initial: String,
 }
 
 impl StyleEngine {

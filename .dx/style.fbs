@@ -19,23 +19,23 @@ table Dynamic {
 }
 
 table DynamicValue {
-    suffix: string (key, required);
-    value: string (required);
+  suffix: string (key, required);
+  value: string (required);
 }
 
 table Screen {
-    name: string (key, required);
-    value: string (required);
+  name: string (key, required);
+  value: string (required);
 }
 
 table State {
-    name: string (key, required);
-    value: string (required);
+  name: string (key, required);
+  value: string (required);
 }
 
 table ContainerQuery {
-    name: string (key, required);
-    value: string (required);
+  name: string (key, required);
+  value: string (required);
 }
 
 table Color {
@@ -48,12 +48,11 @@ table AnimationGenerator {
   template: string (required);
 }
 
-// Custom CSS Property metadata used to generate @property at-rules
 table Property {
   name: string (key, required);
-  syntax: string;            // e.g. "<color>", "*", "<length-percentage>" etc.
-  inherits: bool;            // whether the custom property inherits
-  initial: string;           // optional initial value (may be empty string if omitted)
+  syntax: string;
+  inherits: bool;
+  initial: string;
 }
 
 table Config {
@@ -66,7 +65,6 @@ table Config {
   colors: [Color];
   animation_generators: [AnimationGenerator];
   properties: [Property];
-  // Raw base layer CSS snippet (without @layer wrapper or with; runtime will wrap if needed)
   base_css: string;
 }
 

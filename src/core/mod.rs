@@ -33,9 +33,7 @@ pub struct AppState {
     pub last_css_hash: u64,
     pub css_buffer: Vec<u8>,
     pub class_list_checksum: u64,
-    // Map class -> (offset, len) in CSS file for tombstone deletes
     pub css_index: ahash::AHashMap<String, (usize, usize)>,
-    // Offset where utilities layer body starts (after opening brace + newline) relative to managed region
     pub utilities_offset: usize,
 }
 
@@ -66,7 +64,6 @@ pub fn rebuild_styles(
 
     {
         let state_guard = state.lock().unwrap();
-        // Skip entirely if HTML unchanged and (not initial) OR (initial but class cache & css_index match implying complete CSS)
         let html_same = state_guard.html_hash == new_html_hash;
         let css_complete = state_guard.css_index.len() == state_guard.class_cache.len();
         if html_same && (!is_initial_run || css_complete) {
@@ -79,8 +76,6 @@ pub fn rebuild_styles(
     let all_classes = extract_classes_fast(&html_bytes, prev_len_hint.next_power_of_two());
     let parse_extract_duration = parse_timer.elapsed();
 
-    // Removed early-return that prevented clearing CSS when all classes disappear.
-
     let diff_timer = Instant::now();
     let (added, removed, old_hash_just_for_info) = {
         let state_guard = state.lock().unwrap();
@@ -91,7 +86,6 @@ pub fn rebuild_styles(
     };
     let diff_duration = diff_timer.elapsed();
 
-    // Allow rebuild if CSS file missing classes even when no diff between HTML and cache.
     let css_incomplete = {
         let s = state.lock().unwrap();
         s.css_index.len() != s.class_cache.len()
@@ -126,7 +120,6 @@ pub fn rebuild_styles(
     let css_write_duration = {
         let mut state_guard = state.lock().unwrap();
         state_guard.css_buffer.clear();
-        // Quick classifiers
         let is_color = |c: &str| {
             let base = c.rsplit(':').next().unwrap_or(c);
             base.starts_with("bg-") || base.starts_with("text-")
@@ -136,17 +129,10 @@ pub fn rebuild_styles(
         let missing_index_for_removed = removed.iter().any(|c| !state_guard.css_index.contains_key(c));
         let only_additions = !added.is_empty() && removed.is_empty();
     let only_removals = !removed.is_empty() && added.is_empty();
-    // Full rewrite conditions:
-    //  - initial run
-    //  - mixed add+remove
-    //  - color class involvement
-    //  - missing index for a removal (can't tombstone without span)
-    //  - additions that are NOT pure additions (already covered by only_additions false)
     let need_full = if is_initial_run { true } else if only_additions { added_has_color } else if only_removals { removed_has_color || missing_index_for_removed } else { true };
         if need_full {
-            // Full rewrite path
             let mut class_vec: Vec<String> = state_guard.class_cache.iter().cloned().collect();
-            class_vec.sort(); // deterministic ordering across runs
+            class_vec.sort();
             state_guard.css_buffer.extend_from_slice(b"@layer theme, components, utilities, base, properties;\n");
             fn write_layer(buf: &mut Vec<u8>, name: &str, body: &str) {
                 let trimmed = body.trim();
@@ -163,7 +149,6 @@ pub fn rebuild_styles(
                     buf.extend_from_slice(b"}\n");
                 }
             }
-            // Theme
             let (root_vars, dark_vars) = {
                 let engine = AppState::engine();
                 engine.generate_color_vars_for(class_vec.iter().collect::<Vec<_>>().iter().map(|s| *s))
@@ -191,25 +176,18 @@ pub fn rebuild_styles(
                 }
                 set_properties_layer_present();
             }
-            // Utilities last
             let mut util_buf = Vec::new();
             generator::generate_class_rules_only(&mut util_buf, class_vec.iter());
             let mut util_body = String::new();
             for line in String::from_utf8_lossy(&util_buf).lines() { if line.trim().is_empty() { continue; } util_body.push_str(line); util_body.push('\n'); }
-            // Write utilities header manually to capture offset precisely
             state_guard.css_buffer.extend_from_slice(b"@layer utilities {\n");
-            state_guard.utilities_offset = state_guard.css_buffer.len(); // body starts here
+            state_guard.utilities_offset = state_guard.css_buffer.len();
             for line in util_body.lines() { if line.is_empty() { continue; } state_guard.css_buffer.extend_from_slice(b"  "); state_guard.css_buffer.extend_from_slice(line.as_bytes()); state_guard.css_buffer.push(b'\n'); }
             state_guard.css_buffer.extend_from_slice(b"}\n");
-
-            // Write to disk replacing managed region
             let fragment_vec = state_guard.css_buffer.clone();
-            // Cheap hash compare to avoid rewriting identical bytes
             use ahash::AHasher; let mut hh = AHasher::default(); hh.write(&fragment_vec); let frag_hash = hh.finish();
             let fragment_len = fragment_vec.len();
             let utilities_offset = state_guard.utilities_offset;
-            // Only replace if different length or hash
-            let skip_write = state_guard.last_css_hash == frag_hash && fragment_len as u64 == state_guard.last_css_hash; // simple reuse of field even if semantics differ
             if !skip_write { state_guard.css_out.replace(&fragment_vec)?; state_guard.last_css_hash = frag_hash; }
             state_guard.css_index.clear();
             let body_slice: Vec<u8> = fragment_vec[utilities_offset..fragment_len-2].to_vec();
@@ -222,31 +200,23 @@ pub fn rebuild_styles(
             }
             state_guard.css_out.flush_now()?;
         } else if only_additions {
-            // Pure incremental additions fast path
             generator::generate_class_rules_only(&mut state_guard.css_buffer, added.iter());
             if !state_guard.css_buffer.is_empty() {
-                // prepare indentation
                 let raw = std::mem::take(&mut state_guard.css_buffer);
                 let mut block = Vec::with_capacity(raw.len()+32);
                 for line in raw.split(|b| *b==b'\n') { if line.is_empty() { continue; } block.extend_from_slice(b"  "); block.extend_from_slice(line); block.push(b'\n'); }
                 let start_rel = state_guard.css_out.append_inside_final_block(&block)?;
-                // index new
-                let mut rel_off = start_rel - state_guard.utilities_offset; // relative inside utilities body
+                let mut rel_off = start_rel - state_guard.utilities_offset;
                 for line in block.split(|b| *b==b'\n') { if line.is_empty() { continue; } let trimmed={let mut i=0; while i<line.len() && (line[i]==b' '||line[i]==b'\t'){i+=1;} &line[i..]}; if trimmed.starts_with(b".") { if let Some(br)= trimmed.iter().position(|c| *c==b'{') { let name=String::from_utf8_lossy(&trimmed[1..br]).to_string(); let len=line.len()+1; state_guard.css_index.insert(name,(rel_off,len)); rel_off+=len; } else { rel_off+= line.len()+1; } } else { rel_off+= line.len()+1; } }
                 state_guard.css_out.flush_now()?;
             }
         } else if !removed.is_empty() && added.is_empty() {
-            // Tombstone removals: blank ranges then (optional) compaction skip for now.
             for r in &removed {
                 if let Some((off,len)) = state_guard.css_index.remove(r) { let abs = state_guard.utilities_offset + off; let _ = state_guard.css_out.blank_range(abs, len); }
             }
             state_guard.css_out.flush_now()?;
-            // NOTE: index now has gaps removed; compaction deferred for performance (still <20µs target for removal if blanking is O(n_removed)).
         } else {
-            // Mixed add+remove fallback to full rewrite for correctness
-            drop(state_guard); // release to recurse with full flag
-            return rebuild_styles(state, index_path, true); // reuse logic
-        }
+            drop(state_guard);
         css_write_timer.elapsed()
     };
 
@@ -270,10 +240,8 @@ pub fn rebuild_styles(
     );
     FIRST_LOG_DONE.store(true, Ordering::Relaxed);
 
-    // Final synchronous flush to guarantee bytes are visible immediately after log.
     if !added.is_empty() || !removed.is_empty() {
         if let Ok(mut guard) = state.lock() {
-            // Best-effort flush; ignore error to avoid breaking hot loop.
             let _ = guard.css_out.flush_now();
         }
     }
