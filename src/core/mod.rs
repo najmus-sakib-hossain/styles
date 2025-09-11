@@ -135,33 +135,14 @@ pub fn rebuild_styles(
                 // Layer preamble always at top
                 state_guard.css_buffer.extend_from_slice(b"@layer theme, components, utilities, base, properties;\n");
 
-                // Properties layer once
-                if !properties_layer_present() {
-                    let props = AppState::engine().property_at_rules();
-                    if !props.is_empty() { state_guard.css_buffer.extend_from_slice(props.as_bytes()); set_properties_layer_present(); }
-                }
-                // Theme layer variable blocks
+                // Theme layer (variables)
                 {
                     let engine = AppState::engine();
                     let (root_vars, dark_vars) = engine.generate_color_vars_for(class_vec.iter().collect::<Vec<_>>().iter().map(|s| *s));
-                    if !(root_vars.is_empty() && dark_vars.is_empty()) {
-                        state_guard.css_buffer.extend_from_slice(b"@layer theme {\n");
-                        if !root_vars.is_empty() { state_guard.css_buffer.extend_from_slice(root_vars.as_bytes()); }
-                        if !dark_vars.is_empty() { state_guard.css_buffer.extend_from_slice(dark_vars.as_bytes()); }
-                        state_guard.css_buffer.extend_from_slice(b"}\n");
-                    }
-                }
-                // Base layer (reset) once
-                if !base_layer_present() {
-                    if let Some(base_raw) = AppState::engine().base_layer_raw.as_ref() {
-                        if !base_raw.is_empty() {
-                            state_guard.css_buffer.extend_from_slice(b"@layer base {\n");
-                            state_guard.css_buffer.extend_from_slice(base_raw.trim_end().as_bytes());
-                            if !base_raw.ends_with('\n') { state_guard.css_buffer.push(b'\n'); }
-                            state_guard.css_buffer.extend_from_slice(b"}\n");
-                            set_base_layer_present();
-                        }
-                    }
+                    state_guard.css_buffer.extend_from_slice(b"@layer theme {\n");
+                    if !root_vars.is_empty() { state_guard.css_buffer.extend_from_slice(root_vars.as_bytes()); }
+                    if !dark_vars.is_empty() { state_guard.css_buffer.extend_from_slice(dark_vars.as_bytes()); }
+                    state_guard.css_buffer.extend_from_slice(b"}\n");
                 }
                 // Utilities layer for all classes with indentation
                 state_guard.css_buffer.extend_from_slice(b"@layer utilities {\n");
@@ -185,6 +166,10 @@ pub fn rebuild_styles(
                     }
                 }
                 state_guard.css_buffer.extend_from_slice(b"}\n");
+                // Base layer after utilities per requested order
+                if !base_layer_present() { if let Some(base_raw) = AppState::engine().base_layer_raw.as_ref() { if !base_raw.is_empty() { state_guard.css_buffer.extend_from_slice(b"@layer base {\n"); state_guard.css_buffer.extend_from_slice(base_raw.trim_end().as_bytes()); if !base_raw.ends_with('\n') { state_guard.css_buffer.push(b'\n'); } state_guard.css_buffer.extend_from_slice(b"}\n"); set_base_layer_present(); } } }
+                // Properties layer last
+                if !properties_layer_present() { let props = AppState::engine().property_at_rules(); if !props.is_empty() { state_guard.css_buffer.extend_from_slice(b"@layer properties {\n"); state_guard.css_buffer.extend_from_slice(props.as_bytes()); state_guard.css_buffer.extend_from_slice(b"}\n"); set_properties_layer_present(); } }
                 (true, Vec::new())
             } else {
                 let local_added: Vec<String> = added.iter().cloned().collect();
@@ -204,19 +189,20 @@ pub fn rebuild_styles(
             let mut state_guard = state.lock().unwrap();
             if state_guard.last_css_hash != new_hash_fragment {
                 state_guard.css_out.replace(&css_fragment)?;
-                // rebuild index
+                // rebuild index (support leading spaces before '.')
                 state_guard.css_index.clear();
                 let mut offset = 0usize;
                 for line in css_fragment.split(|b| *b == b'\n') {
-                    if line.starts_with(b".") {
-                        if let Some(brace) = line.iter().position(|c| *c == b'{') {
-                            let class_name = String::from_utf8_lossy(&line[1..brace]).to_string();
+                    let trimmed = {
+                        let mut i = 0; while i < line.len() && (line[i] == b' ' || line[i] == b'\t') { i+=1;} &line[i..]
+                    };
+                    if trimmed.starts_with(b".") {
+                        if let Some(brace) = trimmed.iter().position(|c| *c == b'{') {
+                            let class_name = String::from_utf8_lossy(&trimmed[1..brace]).to_string();
                             let len = line.len() + 1; // include newline
                             state_guard.css_index.insert(class_name, (offset, len));
                             offset += len;
-                        } else {
-                            offset += line.len() + 1;
-                        }
+                        } else { offset += line.len() + 1; }
                     } else {
                         offset += line.len() + 1;
                     }
@@ -255,23 +241,34 @@ pub fn rebuild_styles(
                 }
             }
             if !added_clone.is_empty() {
+                // Wrap incremental additions in their own utilities layer block; indent lines.
                 let mut state_guard = state.lock().unwrap();
-                let base_offset = state_guard.css_out.current_len(); // relative to managed region
-                state_guard.css_out.append(&css_fragment)?;
-                // index new lines
-                let mut rel = 0usize;
+                let mut block = Vec::with_capacity(css_fragment.len() + 64);
+                block.extend_from_slice(b"@layer utilities {\n");
                 for line in css_fragment.split(|b| *b == b'\n') {
+                    if line.is_empty() { continue; }
+                    block.extend_from_slice(b"  ");
+                    block.extend_from_slice(line);
+                    block.push(b'\n');
+                }
+                block.extend_from_slice(b"}\n");
+                let base_offset = state_guard.css_out.current_len();
+                state_guard.css_out.append(&block)?;
+                // index class lines (inside block) accounting for indentation
+                let mut rel = 0usize;
+                for line in block.split(|b| *b == b'\n') {
                     if line.is_empty() { rel += 1; continue; }
-                    if line.starts_with(b".") {
-                        if let Some(brace) = line.iter().position(|c| *c == b'{') {
-                            let class_name = String::from_utf8_lossy(&line[1..brace]).to_string();
+                    let trimmed = { let mut i=0; while i<line.len() && (line[i]==b' '|| line[i]==b'\t'){i+=1;} &line[i..] };
+                    if trimmed.starts_with(b".") {
+                        if let Some(brace) = trimmed.iter().position(|c| *c == b'{') {
+                            let class_name = String::from_utf8_lossy(&trimmed[1..brace]).to_string();
                             let len = line.len() + 1;
                             state_guard.css_index.insert(class_name, (base_offset + rel, len));
                             rel += len;
                         } else { rel += line.len() + 1; }
                     } else { rel += line.len() + 1; }
                 }
-                state_guard.last_css_hash ^= new_hash_fragment;
+                state_guard.last_css_hash ^= new_hash_fragment;                
                 // Immediate flush optimization: when only a small number of classes were added
                 // (interactive typing), users expect the CSS file to update near-instantly.
                 // Flush immediately when (a) DX_IMMEDIATE_FLUSH env var is set OR
