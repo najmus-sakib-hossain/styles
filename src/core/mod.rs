@@ -132,20 +132,41 @@ pub fn rebuild_styles(
             if force_full {
                 let class_vec: Vec<String> = state_guard.class_cache.iter().cloned().collect();
                 // Prepend base layer CSS once if not already present in managed region
+                // Layer preamble always at top
+                state_guard.css_buffer.extend_from_slice(b"@layer properties;\n@layer theme, base, components, utilities;\n");
+
+                // Properties layer once
+                if !properties_layer_present() {
+                    let props = AppState::engine().property_at_rules();
+                    if !props.is_empty() { state_guard.css_buffer.extend_from_slice(props.as_bytes()); set_properties_layer_present(); }
+                }
+                // Theme layer variable blocks
+                {
+                    let engine = AppState::engine();
+                    let (root_vars, dark_vars) = engine.generate_color_vars_for(class_vec.iter().collect::<Vec<_>>().iter().map(|s| *s));
+                    if !(root_vars.is_empty() && dark_vars.is_empty()) {
+                        state_guard.css_buffer.extend_from_slice(b"@layer theme {\n");
+                        if !root_vars.is_empty() { state_guard.css_buffer.extend_from_slice(root_vars.as_bytes()); }
+                        if !dark_vars.is_empty() { state_guard.css_buffer.extend_from_slice(dark_vars.as_bytes()); }
+                        state_guard.css_buffer.extend_from_slice(b"}\n");
+                    }
+                }
+                // Base layer (reset) once
                 if !base_layer_present() {
                     if let Some(base_raw) = AppState::engine().base_layer_raw.as_ref() {
                         if !base_raw.is_empty() {
-                            let mut header = String::with_capacity(base_raw.len() + 32);
-                            header.push_str("@layer base {\n");
-                            header.push_str(base_raw.trim_end());
-                            if !header.ends_with('\n') { header.push('\n'); }
-                            header.push_str("}\n");
-                            state_guard.css_buffer.extend_from_slice(header.as_bytes());
+                            state_guard.css_buffer.extend_from_slice(b"@layer base {\n");
+                            state_guard.css_buffer.extend_from_slice(base_raw.trim_end().as_bytes());
+                            if !base_raw.ends_with('\n') { state_guard.css_buffer.push(b'\n'); }
+                            state_guard.css_buffer.extend_from_slice(b"}\n");
                             set_base_layer_present();
                         }
                     }
                 }
-                generator::generate_css_into(&mut state_guard.css_buffer, class_vec.iter());
+                // Utilities layer for all classes
+                state_guard.css_buffer.extend_from_slice(b"@layer utilities {\n");
+                generator::generate_class_rules_only(&mut state_guard.css_buffer, class_vec.iter());
+                state_guard.css_buffer.extend_from_slice(b"}\n");
                 (true, Vec::new())
             } else {
                 let local_added: Vec<String> = added.iter().cloned().collect();

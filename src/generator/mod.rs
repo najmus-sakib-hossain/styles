@@ -49,3 +49,34 @@ where
         }
     }
 }
+
+pub fn generate_class_rules_only<'a, I>(buf: &mut Vec<u8>, classes: I)
+where
+    I: IntoIterator<Item = &'a String>,
+{
+    use cssparser::serialize_identifier;
+    let mut escaped = String::with_capacity(64);
+    let engine_opt = std::panic::catch_unwind(|| AppState::engine()).ok();
+    if let Some(engine) = engine_opt {
+        for class in classes {
+            if let Some(css) = engine.css_for_class(class) {
+                buf.extend_from_slice(css.as_bytes());
+                if !css.ends_with('\n') { buf.push(b'\n'); }
+            } else {
+                buf.push(b'.');
+                escaped.clear();
+                serialize_identifier(class, &mut escaped).unwrap();
+                buf.extend_from_slice(escaped.as_bytes());
+                buf.extend_from_slice(b" {}\n");
+            }
+        }
+    } else {
+        for class in classes {
+            buf.push(b'.');
+            escaped.clear();
+            serialize_identifier(class, &mut escaped).unwrap();
+            buf.extend_from_slice(escaped.as_bytes());
+            buf.extend_from_slice(b" {}\n");
+        }
+    }
+}
