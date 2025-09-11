@@ -277,6 +277,9 @@ fn main() {
         property_offsets.push(prop_offset);
     }
     let properties_vec = builder.create_vector(&property_offsets);
+    // Prepare raw base layer CSS (no TOML indirection)
+    const BASE_CSS: &str = "*, ::after, ::before, ::backdrop, ::file-selector-button {\n  box-sizing: border-box;\n  margin: 0;\n  padding: 0;\n  border: 0 solid;\n}\n";
+    let base_css_offset = builder.create_string(BASE_CSS);
 
     let table_wip = builder.start_table();
     builder.push_slot(4, styles_vec, WIPOffset::new(0));
@@ -288,6 +291,7 @@ fn main() {
     builder.push_slot(16, colors_vec, WIPOffset::new(0));
     builder.push_slot(18, anim_gen_vec, WIPOffset::new(0));
     builder.push_slot(20, properties_vec, WIPOffset::new(0));
+    builder.push_slot(22, base_css_offset, WIPOffset::new(0));
     let config_root = builder.end_table(table_wip);
 
     builder.finish(config_root, None);

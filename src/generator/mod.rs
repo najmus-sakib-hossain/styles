@@ -1,6 +1,6 @@
 use cssparser::serialize_identifier;
 
-use crate::core::AppState;
+use crate::core::{AppState, properties_layer_present, set_properties_layer_present};
 
 pub fn generate_css_into<'a, I>(buf: &mut Vec<u8>, classes: I)
 where
@@ -10,11 +10,11 @@ where
     let engine_opt = std::panic::catch_unwind(|| AppState::engine()).ok();
     if let Some(engine) = engine_opt {
         let collected: Vec<&String> = classes.into_iter().collect();
-        if buf.is_empty() {
-            // Emit custom @property at-rules first (if any)
-            let props = engine.property_at_rules();
+        if buf.is_empty() && !properties_layer_present() {
+            let props = engine.property_at_rules(); // already includes @property rules (not a layer marker)
             if !props.is_empty() {
                 buf.extend_from_slice(props.as_bytes());
+                set_properties_layer_present();
             }
             let (root_vars, dark_vars) =
                 engine.generate_color_vars_for(collected.iter().map(|s| *s));

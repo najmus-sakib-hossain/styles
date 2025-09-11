@@ -14,6 +14,14 @@ use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use std::sync::atomic::{AtomicBool, Ordering};
 
+static BASE_LAYER_PRESENT: AtomicBool = AtomicBool::new(false);
+pub fn set_base_layer_present() { BASE_LAYER_PRESENT.store(true, Ordering::Relaxed); }
+fn base_layer_present() -> bool { BASE_LAYER_PRESENT.load(Ordering::Relaxed) }
+
+static PROPERTIES_LAYER_PRESENT: AtomicBool = AtomicBool::new(false);
+pub fn set_properties_layer_present() { PROPERTIES_LAYER_PRESENT.store(true, Ordering::Relaxed); }
+pub fn properties_layer_present() -> bool { PROPERTIES_LAYER_PRESENT.load(Ordering::Relaxed) }
+
 static FIRST_LOG_DONE: AtomicBool = AtomicBool::new(false);
 
 pub struct AppState {
@@ -123,6 +131,20 @@ pub fn rebuild_styles(
             let force_full = is_initial_run ||(!removed.is_empty()) || missing_index_for_removed || removed_has_color || added_has_color;
             if force_full {
                 let class_vec: Vec<String> = state_guard.class_cache.iter().cloned().collect();
+                // Prepend base layer CSS once if not already present in managed region
+                if !base_layer_present() {
+                    if let Some(base_raw) = AppState::engine().base_layer_raw.as_ref() {
+                        if !base_raw.is_empty() {
+                            let mut header = String::with_capacity(base_raw.len() + 32);
+                            header.push_str("@layer base {\n");
+                            header.push_str(base_raw.trim_end());
+                            if !header.ends_with('\n') { header.push('\n'); }
+                            header.push_str("}\n");
+                            state_guard.css_buffer.extend_from_slice(header.as_bytes());
+                            set_base_layer_present();
+                        }
+                    }
+                }
                 generator::generate_css_into(&mut state_guard.css_buffer, class_vec.iter());
                 (true, Vec::new())
             } else {

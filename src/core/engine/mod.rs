@@ -56,6 +56,7 @@ pub struct StyleEngine {
     pub generator_map: Option<HashMap<String, usize>>,
     pub properties: Vec<PropertyMeta>,
     pub property_css: String,
+    pub base_layer_raw: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -181,6 +182,7 @@ impl StyleEngine {
                 out
             }
         };
+        let base_layer_raw = config.base_css().map(|s| s.to_string());
         Ok(Self {
             precompiled,
             _mmap: Arc::new(mmap),
@@ -192,6 +194,7 @@ impl StyleEngine {
             generator_map,
             properties,
             property_css,
+            base_layer_raw,
         })
     }
 
@@ -222,6 +225,7 @@ impl StyleEngine {
             generator_map: None,
             properties: Vec::new(),
             property_css: String::new(),
+            base_layer_raw: None,
         }
     }
 

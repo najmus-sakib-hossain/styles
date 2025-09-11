@@ -66,6 +66,8 @@ table Config {
   colors: [Color];
   animation_generators: [AnimationGenerator];
   properties: [Property];
+  // Raw base layer CSS snippet (without @layer wrapper or with; runtime will wrap if needed)
+  base_css: string;
 }
 
 root_type Config;

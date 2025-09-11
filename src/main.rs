@@ -15,7 +15,7 @@ mod telemetry;
 mod watcher;
 
 use crate::config::Config;
-use core::{AppState, rebuild_styles};
+use core::{AppState, rebuild_styles, set_base_layer_present, set_properties_layer_present};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("{}", "Starting DX Style core...".cyan());
@@ -60,6 +60,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Pre-scan existing CSS file to build index (best-effort)
     let mut css_index = ahash::AHashMap::with_capacity(256);
     if let Ok(existing) = std::fs::read(&config.paths.css_file) {
+        if existing.windows(11).any(|w| w == b"@layer base") { set_base_layer_present(); }
+        if existing.windows(18).any(|w| w == b"@layer properties") { set_properties_layer_present(); }
         let mut offset = 0usize;
         for line in existing.split(|b| *b == b'\n') {
             if line.starts_with(b".") {

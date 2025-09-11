@@ -63,6 +63,22 @@ impl CssOutput {
             .open(path)?;
         let mut existing = Vec::new();
         f.read_to_end(&mut existing)?;
+        // Fixup: if file has leading NULs (legacy bug) and no marker, strip them.
+        if Self::ensure_marker_in_memory(&existing).is_none() {
+            if let Some(first_non_zero) = existing.iter().position(|b| *b != 0) {
+                if first_non_zero > 0 {
+                    let mut trimmed = existing.split_off(first_non_zero);
+                    std::mem::swap(&mut existing, &mut trimmed);
+                    f.set_len(0)?;
+                    f.seek(SeekFrom::Start(0))?;
+                    f.write_all(&existing)?;
+                    f.flush()?;
+                }
+            } else if !existing.is_empty() { // all zeros
+                existing.clear();
+                f.set_len(0)?;
+            }
+        }
         let mut logical_len = existing.len();
         let managed_base = if let Some(base) = Self::ensure_marker_in_memory(&existing) {
             base
@@ -90,31 +106,38 @@ impl CssOutput {
             .write(true)
             .create(true)
             .open(path)?;
+        let mut was_empty = false;
         if file.metadata()?.len() == 0 {
-            file.set_len(4096)?; // provide capacity
+            // Preallocate capacity but treat logical len as 0 so marker lands at start.
+            file.set_len(4096)?; // capacity
+            was_empty = true;
         }
-        let mut logical_len = file.metadata()?.len() as usize;
+        let mut logical_len = if was_empty { 0 } else { file.metadata()?.len() as usize };
         let mut tmp = Vec::with_capacity(logical_len);
         {
             let mut reader = std::io::BufReader::new(&file);
             use std::io::Read;
             reader.read_to_end(&mut tmp)?;
         }
-        let managed_base = if let Some(base) = Self::ensure_marker_in_memory(&tmp) {
+        // If all zeros and no marker treat as empty
+        let all_zeros = !tmp.is_empty() && tmp.iter().all(|b| *b == 0);
+        if all_zeros { logical_len = 0; }
+        let managed_base = if let Some(base) = if logical_len > 0 { Self::ensure_marker_in_memory(&tmp) } else { None } {
             base
         } else {
-            // Need to append marker; ensure capacity
-            let needed = logical_len + MANAGED_MARKER.len();
+            // Place marker at start if empty OR all zeros; else append.
+            let place_at = if logical_len == 0 { 0 } else { logical_len };
+            let needed = place_at + MANAGED_MARKER.len();
             if needed > file.metadata()?.len() as usize {
                 let new_len = (needed.next_power_of_two()).max(4096) as u64;
                 file.set_len(new_len)?;
             }
             let mut mmap_temp = unsafe { MmapMut::map_mut(&file)? };
-            mmap_temp[logical_len..logical_len + MANAGED_MARKER.len()]
+            mmap_temp[place_at..place_at + MANAGED_MARKER.len()]
                 .copy_from_slice(MANAGED_MARKER.as_bytes());
-            mmap_temp.flush()?; // make marker visible
-            logical_len += MANAGED_MARKER.len();
-            logical_len // region empty; base after marker
+            mmap_temp.flush()?;
+            logical_len = place_at + MANAGED_MARKER.len();
+            logical_len
         };
         let mmap = unsafe { MmapMut::map_mut(&file)? };
         Ok(Self {
