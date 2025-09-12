@@ -17,7 +17,7 @@ pub mod cam16;
 pub mod solver;
 pub mod viewing_conditions;
 
-#[derive(Default, Clone, Copy, Debug, PartialOrd)]
+#[derive(Default, Clone, Copy, Debug, PartialOrd, serde::Serialize)]
 
 pub struct Hct {
     _hue: f64,

@@ -9,7 +9,7 @@ use std::string::String;
 
 pub mod variant;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, serde::Serialize)]
 
 pub struct Scheme {
     pub primary: Argb,

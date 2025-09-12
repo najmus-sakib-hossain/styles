@@ -13,7 +13,7 @@ use alloc::{string::String, vec::Vec};
 use std::{string::String, vec::Vec};
 
 /// Custom color used to pair with a theme
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 
 pub struct CustomColor {
     pub value: Argb,
@@ -22,7 +22,7 @@ pub struct CustomColor {
 }
 
 /// Color group
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 
 pub struct ColorGroup {
     pub color: Argb,
@@ -32,7 +32,7 @@ pub struct ColorGroup {
 }
 
 /// Custom Color Group
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 
 pub struct CustomColorGroup {
     pub color: CustomColor,
@@ -76,14 +76,14 @@ impl CustomColorGroup {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 
 pub struct Schemes {
     pub light: Scheme,
     pub dark: Scheme,
 }
 
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 
 pub struct Palettes {
     pub primary: TonalPalette,
@@ -279,7 +279,7 @@ impl ThemeBuilder {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 
 pub struct Theme {
     pub source: Argb,

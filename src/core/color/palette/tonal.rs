@@ -22,7 +22,7 @@ use core::{
 
 /// A convenience class for retrieving colors that are constant in hue and
 /// chroma, but vary in tone.
-#[derive(Clone, Copy, Debug, PartialOrd)]
+#[derive(Clone, Copy, Debug, PartialOrd, serde::Serialize)]
 
 pub struct TonalPalette {
     _hue: f64,
