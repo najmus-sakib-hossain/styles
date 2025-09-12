@@ -4,7 +4,7 @@ use super::Palette;
 use crate::core::color::utils::no_std::FloatExt;
 use crate::core::color::{
     Map,
-    color::Argb,
+    color::{Argb, Oklch},
     dynamic_color::Variant,
     hct::Hct,
     scheme::variant::{
@@ -22,12 +22,48 @@ use core::{
 
 /// A convenience class for retrieving colors that are constant in hue and
 /// chroma, but vary in tone.
-#[derive(Clone, Copy, Debug, PartialOrd, serde::Serialize)]
+#[derive(Clone, Copy, Debug, PartialOrd)]
 
 pub struct TonalPalette {
     _hue: f64,
     _chroma: f64,
     _key_color: Hct,
+}
+
+#[derive(serde::Serialize)]
+struct TonalPaletteKeyColorSer {
+    _oklch: String,
+    _tone: f64,
+    _argb: String,
+}
+
+fn format_oklch(oklch: Oklch) -> String {
+    format!("oklch({:.3}% {:.3} {:.1}deg)", oklch.l, oklch.c, oklch.h)
+}
+
+impl serde::Serialize for TonalPalette {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::ser::Serializer,
+    {
+        use serde::ser::SerializeMap;
+
+        // Prepare representative OKLCH from the key color's ARGB
+        let key_argb = Argb::from(self.key_color());
+        let key_oklch: Oklch = key_argb.into();
+        let oklch_string = format_oklch(key_oklch);
+
+        let key_ser = TonalPaletteKeyColorSer {
+            _oklch: oklch_string.clone(),
+            _tone: self.key_color().get_tone(),
+            _argb: Argb::from(self.key_color()).to_hex_with_pound(),
+        };
+
+        let mut map = serializer.serialize_map(Some(2))?;
+        map.serialize_entry("_oklch", &oklch_string)?;
+        map.serialize_entry("_key_color", &key_ser)?;
+        map.end()
+    }
 }
 
 impl TonalPalette {
