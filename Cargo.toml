@@ -8,6 +8,10 @@ name = "style"
 path = "src/lib.rs"
 
 [dependencies]
+indexmap = { version = "2.3.0", default-features = false }
+images = { package = "image", version = "0.25.2", optional = true }
+libm = { version = "0.2.8", optional = true }
+
 ahash = "0.8.12"
 colored = "3.0.0"
 cssparser = "0.35.0"
@@ -27,9 +31,16 @@ winapi = { version = "0.3", features = ["wincon","consoleapi","minwindef","proce
 
 [features]
 eager-flush = []
+default = ["std"]
+std = ["indexmap/std", "ahash/std", "ahash/runtime-rng"]
+image = ["dep:images"]
+libm = ["dep:libm"]
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
+float-cmp = "0.9"
+reqwest = "0.12.5"
+tokio = { version = "1.39.2", features = ["rt", "macros"] }
 
 [[bench]]
 name = "hot_path"

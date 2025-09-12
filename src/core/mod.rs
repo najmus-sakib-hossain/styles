@@ -7,7 +7,7 @@ mod group;
 use ahash::{AHashSet, AHasher};
 use colored::Colorize;
 use std::hash::Hasher;
-mod color;
+pub mod color;
 pub mod output;
 use output::CssOutput;
 use std::sync::atomic::{AtomicBool, Ordering};
